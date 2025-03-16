@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mouse and Keyboard Input</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+      }
+      #mouseArea {
+        width: 500px;
+        height: 300px;
+        border: 2px solid black;
+        margin: 20px auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Mouse and Keyboard Input</h1>
+    <p>Move the mouse inside the box or type in the input field.</p>
+
+    <div id="mouseArea">Move your mouse here</div>
+    <br />
+    <input
+      type="text"
+      id="keyboardInput"
+      placeholder="Type something here..."
+    />
+
+    <script>
+      document
+        .getElementById("mouseArea")
+        .addEventListener("mousemove", function (event) {
+          fetch("/move_mouse", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ x: event.clientX, y: event.clientY }),
+          });
+        });
+
+      document
+        .getElementById("keyboardInput")
+        .addEventListener("keydown", function (event) {
+          fetch("/keyboard_input", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ key: event.key }),
+          });
+        });
+    </script>
+  </body>
+</html>
