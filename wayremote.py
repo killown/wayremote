@@ -27,7 +27,7 @@ def move_mouse():
 def keyboard_input():
     data = request.json
     key = data.get('key', '')
-    print(f'Key pressed: {key}')  # Aqui você pode implementar funcionalidades futuras
+    print(f'Key pressed: {key}')  
     return jsonify({'status': 'Key received'})
 
 if __name__ == '__main__':
