@@ -1,0 +1,136 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f8f9fa;
+}
+
+#mouseArea {
+  width: 100%;
+  height: 300px;
+  border: 2px solid black;
+  background-color: #28282b;
+  color: #fff;
+  margin: 20px auto;
+  position: relative;
+  touch-action: none; /* Prevent default touch behavior */
+}
+
+#output {
+  white-space: pre-wrap;
+  margin: 20px 0;
+  padding: 20px;
+  border: 1px solid #ddd;
+  background-color: #fff;
+  max-width: 800px;
+  width: 100%;
+  overflow: auto;
+}
+
+.error {
+  color: red;
+}
+
+#speedControl {
+  margin-top: 20px;
+}
+
+/* Style for the button container */
+.button-container {
+  display: flex;
+  justify-content: center;
+  gap: 10px; /* Space between buttons */
+  margin: 20px auto;
+}
+
+/* Style for the Expo button */
+#expoButton {
+  padding: 10px;
+  font-size: 16px;
+  background-color: #28a745; /* Green color */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 100px; /* Fixed width */
+}
+
+#expoButton:hover {
+  background-color: #218838; /* Darker green on hover */
+}
+
+/* Style for the Scale button */
+#scaleButton {
+  padding: 10px;
+  font-size: 16px;
+  background-color: #dc3545; /* Red color */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 100px; /* Fixed width */
+}
+
+#scaleButton:hover {
+  background-color: #c82333; /* Darker red on hover */
+}
+
+/* Style for the UP and DOWN buttons */
+#upButton,
+#downButton,
+#pageUpButton,
+#pageDownButton,
+#leftButton,
+#rightButton {
+  padding: 10px;
+  font-size: 16px;
+  background-color: #007bff; /* Blue color */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 100px; /* Fixed width */
+}
+
+#fullscreenButton {
+  padding: 10px;
+  font-size: 16px;
+  background-color: #007bff; /* Blue color */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  width: 100px; /* Fixed width */
+}
+
+#upButton:hover,
+#downButton:hover,
+#pageUpButton:hover,
+#pageDownButton:hover,
+#leftButton:hover,
+#rightButton:hover {
+  background-color: #0056b3; /* Darker blue on hover */
+}
+
+/* Style for the keyboard activation button */
+#keyboardButton {
+  display: block;
+  width: 200px;
+  margin: 20px auto;
+  padding: 10px;
+  font-size: 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+#keyboardButton:hover {
+  background-color: #0056b3;
+}
+
+/* Hide the input field */
+#hiddenInput {
+  position: absolute;
+  top: -1000px; /* Move it off-screen */
+  opacity: 0; /* Make it invisible */
+}
