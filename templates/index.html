@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mouse and Keyboard Input with WebSocket</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -14,7 +13,7 @@
         background-color: #f8f9fa;
       }
       #mouseArea {
-        width: 500px;
+        width: 100%;
         height: 300px;
         border: 2px solid black;
         margin: 20px auto;
@@ -34,31 +33,249 @@
       .error {
         color: red;
       }
+      #speedControl {
+        margin-top: 20px;
+      }
+      /* Style for the button container */
+      .button-container {
+        display: flex;
+        justify-content: center;
+        gap: 10px; /* Space between buttons */
+        margin: 20px auto;
+      }
+      /* Style for the Expo button */
+      #expoButton {
+        padding: 10px;
+        font-size: 16px;
+        background-color: #28a745; /* Green color */
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 100px; /* Fixed width */
+      }
+      #expoButton:hover {
+        background-color: #218838; /* Darker green on hover */
+      }
+      /* Style for the Scale button */
+      #scaleButton {
+        padding: 10px;
+        font-size: 16px;
+        background-color: #dc3545; /* Red color */
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 100px; /* Fixed width */
+      }
+      #scaleButton:hover {
+        background-color: #c82333; /* Darker red on hover */
+      }
+      /* Style for the UP and DOWN buttons */
+      #upButton,
+      #downButton {
+        padding: 10px;
+        font-size: 16px;
+        background-color: #007bff; /* Blue color */
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 100px; /* Fixed width */
+      }
+      #fullscreenButton {
+        padding: 10px;
+        font-size: 16px;
+        background-color: #007bff; /* Blue color */
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        width: 100px; /* Fixed width */
+      }
+      #upButton:hover,
+      #downButton:hover {
+        background-color: #0056b3; /* Darker blue on hover */
+      }
+      /* Style for the keyboard activation button */
+      #keyboardButton {
+        display: block;
+        width: 200px;
+        margin: 20px auto;
+        padding: 10px;
+        font-size: 16px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+      }
+      #keyboardButton:hover {
+        background-color: #0056b3;
+      }
+      /* Hide the input field */
+      #hiddenInput {
+        position: absolute;
+        top: -1000px; /* Move it off-screen */
+        opacity: 0; /* Make it invisible */
+      }
     </style>
   </head>
   <body>
     <div class="container mt-5">
-      <h1 class="text-center mb-4">Mouse and Keyboard Input</h1>
-      <p>
-        Move your finger inside the box or type in the input field. Commands are
-        sent via WebSocket.
-      </p>
+      <!-- Button Container for UP, Expo, Scale, and DOWN -->
+      <div class="button-container">
+        <button id="upButton">UP</button>
+        <button id="expoButton">Expo</button>
+        <button id="fullscreenButton">Fullscreen</button>
+        <button id="scaleButton">Scale</button>
+        <button id="downButton">DOWN</button>
+      </div>
 
       <div id="mouseArea">Move your finger here</div>
-      <br />
-      <input
-        type="text"
-        id="keyboardInput"
-        placeholder="Type something here..."
-        class="form-control"
-      />
+
+      <!-- Button to activate the keyboard -->
+      <button id="keyboardButton">Activate Keyboard</button>
 
       <h3 class="mt-5">WebSocket Communication</h3>
       <div id="output" class="mt-4"></div>
 
+      <!-- Speed control slider -->
+      <div id="speedControl" class="mt-4">
+        <label for="speedSlider">Movement Speed:</label>
+        <input
+          type="range"
+          id="speedSlider"
+          min="0.1"
+          max="20"
+          step="0.1"
+          value="10"
+        />
+        <span id="speedValue">10x</span>
+      </div>
+
+      <!-- Hidden input field to activate the keyboard -->
+      <input type="text" id="hiddenInput" />
+
       <script>
-        const socket = new WebSocket("ws://192.168.1.8:5000/ws");
+        const socket = new WebSocket("ws://192.168.1.8:5000/ws"); // Replace with your server's IP
         const outputDiv = document.getElementById("output");
+        const hiddenInput = document.getElementById("hiddenInput");
+        const keyboardButton = document.getElementById("keyboardButton");
+        const expoButton = document.getElementById("expoButton"); // Get the Expo button
+        const fullscreenButton = document.getElementById("fullscreenButton"); // Get fullscreen button
+        const scaleButton = document.getElementById("scaleButton"); // Get the Scale button
+        const upButton = document.getElementById("upButton"); // Get the UP button
+        const downButton = document.getElementById("downButton"); // Get the DOWN button
+        let isTouching = false; // Track whether a touch is active
+        let lastTouchPosition = null; // Track the last touch position
+        let speedMultiplier = 10; // Default speed multiplier set to 10
+        let touchStartTime = 0; // Track when the touch started
+        const CLICK_THRESHOLD = 200; // Time in milliseconds to distinguish between click and hold
+        let upInterval = null; // Interval for UP button repeat
+        let downInterval = null; // Interval for DOWN button repeat
+
+        // Expo Button Click Event
+        expoButton.addEventListener("click", function () {
+          const message = JSON.stringify({
+            command: "press_key",
+            args: ["W-KEY_E"],
+          });
+          socket.send(message);
+          console.log("Expo button clicked: Sent W-KEY_E");
+        });
+
+        // Fullscreen Button Click Event
+        fullscreenButton.addEventListener("click", function () {
+          const message = JSON.stringify({
+            command: "press_key",
+            args: ["KEY_F11"],
+          });
+          socket.send(message);
+          console.log("Fullscreen button clicked: Sent KEY_F11");
+        });
+
+        // Scale Button Click Event
+        scaleButton.addEventListener("click", function () {
+          const message = JSON.stringify({
+            command: "click_button",
+            args: ["BTN_SIDE", "full"],
+          });
+          socket.send(message);
+          console.log("Scale button clicked: Sent BTN_SIDE");
+        });
+
+        // UP Button Event Listeners
+        upButton.addEventListener("mousedown", function () {
+          // Send the UP key immediately
+          const message = JSON.stringify({
+            command: "press_key",
+            args: ["KEY_UP"],
+          });
+          socket.send(message);
+          console.log("UP button clicked: Sent KEY_UP");
+
+          // Start repeating the UP action
+          upInterval = setInterval(function () {
+            socket.send(message);
+            console.log("UP button held: Sent KEY_UP");
+          }, 100); // Repeat every 100ms
+        });
+
+        upButton.addEventListener("mouseup", function () {
+          // Stop repeating the UP action
+          clearInterval(upInterval);
+          upInterval = null;
+        });
+
+        upButton.addEventListener("mouseleave", function () {
+          // Stop repeating the UP action if the mouse leaves the button
+          clearInterval(upInterval);
+          upInterval = null;
+        });
+
+        // DOWN Button Event Listeners
+        downButton.addEventListener("mousedown", function () {
+          // Send the DOWN key immediately
+          const message = JSON.stringify({
+            command: "press_key",
+            args: ["KEY_DOWN"],
+          });
+          socket.send(message);
+          console.log("DOWN button clicked: Sent KEY_DOWN");
+
+          // Start repeating the DOWN action
+          downInterval = setInterval(function () {
+            socket.send(message);
+            console.log("DOWN button held: Sent KEY_DOWN");
+          }, 100); // Repeat every 100ms
+        });
+
+        downButton.addEventListener("mouseup", function () {
+          // Stop repeating the DOWN action
+          clearInterval(downInterval);
+          downInterval = null;
+        });
+
+        downButton.addEventListener("mouseleave", function () {
+          // Stop repeating the DOWN action if the mouse leaves the button
+          clearInterval(downInterval);
+          downInterval = null;
+        });
+
+        // Focus the hidden input field when the button is clicked
+        keyboardButton.addEventListener("click", function () {
+          hiddenInput.focus(); // Activate the keyboard
+        });
+
+        // Speed control slider
+        const speedSlider = document.getElementById("speedSlider");
+        const speedValue = document.getElementById("speedValue");
+
+        speedSlider.addEventListener("input", function () {
+          speedMultiplier = parseFloat(this.value);
+          speedValue.textContent = `${speedMultiplier}x`;
+        });
 
         // WebSocket event listeners
         socket.addEventListener("open", function () {
@@ -84,44 +301,234 @@
           outputDiv.innerHTML = `<p>Connection closed</p>`;
         });
 
-        // Mouse movement event listener (for desktop)
+        // Function to fetch the current cursor position
+        function fetchCursorPosition() {
+          return new Promise((resolve) => {
+            socket.send(JSON.stringify({ command: "get_cursor_position" }));
+            socket.addEventListener("message", function handler(event) {
+              const data = JSON.parse(event.data);
+              if (data.pos) {
+                resolve(data.pos);
+                socket.removeEventListener("message", handler); // Remove the listener after resolving
+              }
+            });
+          });
+        }
+
+        // Touch start event listener (for smartphones)
         document
           .getElementById("mouseArea")
-          .addEventListener("mousemove", function (event) {
-            const message = JSON.stringify({
-              command: "move_cursor",
-              args: [event.offsetX, event.offsetY], // Use offsetX and offsetY for relative coordinates
-            });
-            socket.send(message);
+          .addEventListener("touchstart", function (event) {
+            event.preventDefault(); // Prevent default touch behavior (e.g., scrolling)
+            const touch = event.touches[0];
+            const rect = event.target.getBoundingClientRect();
+            lastTouchPosition = {
+              x: touch.clientX - rect.left,
+              y: touch.clientY - rect.top,
+            };
+            isTouching = true; // Mark that a touch is active
+            touchStartTime = Date.now(); // Record the start time of the touch
           });
 
-        // Touch movement event listener (for smartphones)
+        // Touch move event listener (for smartphones)
         document
           .getElementById("mouseArea")
-          .addEventListener("touchmove", function (event) {
+          .addEventListener("touchmove", async function (event) {
             event.preventDefault(); // Prevent default touch behavior (e.g., scrolling)
+            if (!isTouching || !lastTouchPosition) return;
+
             const touch = event.touches[0]; // Get the first touch point
             const rect = event.target.getBoundingClientRect();
-            const x = touch.clientX - rect.left; // Calculate relative X position
-            const y = touch.clientY - rect.top; // Calculate relative Y position
+            const currentTouchPosition = {
+              x: touch.clientX - rect.left,
+              y: touch.clientY - rect.top,
+            };
 
-            const message = JSON.stringify({
-              command: "move_cursor",
-              args: [x, y],
-            });
-            socket.send(message);
+            // Calculate the delta (change) in touch position
+            const deltaX =
+              (currentTouchPosition.x - lastTouchPosition.x) * speedMultiplier;
+            const deltaY =
+              (currentTouchPosition.y - lastTouchPosition.y) * speedMultiplier;
+
+            try {
+              // Fetch the current cursor position
+              const cursorPosition = await fetchCursorPosition();
+
+              // Calculate the new cursor position relative to the current position
+              const x = cursorPosition.x + deltaX;
+              const y = cursorPosition.y + deltaY;
+
+              const message = JSON.stringify({
+                command: "move_cursor",
+                args: [x, y],
+              });
+              socket.send(message);
+
+              // Update the last touch position
+              lastTouchPosition = currentTouchPosition;
+            } catch (error) {
+              console.error("Error moving cursor:", error);
+            }
           });
 
-        // Keyboard input event listener
+        // Touch end event listener (for smartphones)
         document
-          .getElementById("keyboardInput")
-          .addEventListener("keydown", function (event) {
-            const message = JSON.stringify({
-              command: "keyboard_input",
-              args: [event.key],
-            });
-            socket.send(message);
+          .getElementById("mouseArea")
+          .addEventListener("touchend", function (event) {
+            event.preventDefault(); // Prevent default touch behavior (e.g., scrolling)
+            isTouching = false; // Mark that the touch has ended
+
+            // Calculate the duration of the touch
+            const touchDuration = Date.now() - touchStartTime;
+
+            // If the touch duration is less than the threshold, consider it a click
+            if (touchDuration < CLICK_THRESHOLD) {
+              const message = JSON.stringify({
+                command: "click_button",
+                args: ["BTN_LEFT", "full"],
+              });
+              socket.send(message);
+              console.log("Click detected: Sent BTN_LEFT");
+            } else {
+              console.log("Hold detected: No click sent");
+            }
           });
+
+        // Function to map characters to key codes
+        function getKeyCode(key) {
+          // Map special keys to their corresponding KEY_* codes
+          const keyMap = {
+            Backspace: "KEY_BACKSPACE",
+            Enter: "KEY_ENTER",
+            Shift: "KEY_LEFTSHIFT",
+            Control: "KEY_LEFTCTRL",
+            Alt: "KEY_LEFTALT",
+            " ": "KEY_SPACE", // Spacebar
+            ArrowLeft: "KEY_LEFT",
+            ArrowRight: "KEY_RIGHT",
+            ArrowUp: "KEY_UP",
+            ArrowDown: "KEY_DOWN",
+            Tab: "KEY_TAB",
+            CapsLock: "KEY_CAPSLOCK",
+            Escape: "KEY_ESC",
+            F1: "KEY_F1",
+            F2: "KEY_F2",
+            F3: "KEY_F3",
+            F4: "KEY_F4",
+            F5: "KEY_F5",
+            F6: "KEY_F6",
+            F7: "KEY_F7",
+            F8: "KEY_F8",
+            F9: "KEY_F9",
+            F10: "KEY_F10",
+            F11: "KEY_F11",
+            F12: "KEY_F12",
+            Insert: "KEY_INSERT",
+            Delete: "KEY_DELETE",
+            Home: "KEY_HOME",
+            End: "KEY_END",
+            PageUp: "KEY_PAGEUP",
+            PageDown: "KEY_PAGEDOWN",
+            NumLock: "KEY_NUMLOCK",
+            ScrollLock: "KEY_SCROLLLOCK",
+            Pause: "KEY_PAUSE",
+            ContextMenu: "KEY_MENU",
+            "`": "KEY_GRAVE",
+            "~": "KEY_GRAVE",
+            "!": "KEY_1",
+            "@": "KEY_2",
+            "#": "KEY_3",
+            $: "KEY_4",
+            "%": "KEY_5",
+            "^": "KEY_6",
+            "&": "KEY_7",
+            "*": "KEY_8",
+            "(": "KEY_9",
+            ")": "KEY_0",
+            "-": "KEY_MINUS",
+            _: "KEY_MINUS",
+            "=": "KEY_EQUAL",
+            "+": "KEY_EQUAL",
+            "[": "KEY_LEFTBRACE",
+            "{": "KEY_LEFTBRACE",
+            "]": "KEY_RIGHTBRACE",
+            "}": "KEY_RIGHTBRACE",
+            "\\": "KEY_BACKSLASH",
+            "|": "KEY_BACKSLASH",
+            ";": "KEY_SEMICOLON",
+            ":": "KEY_SEMICOLON",
+            "'": "KEY_APOSTROPHE",
+            '"': "KEY_APOSTROPHE",
+            ",": "KEY_COMMA",
+            "<": "KEY_COMMA",
+            ".": "KEY_DOT",
+            ">": "KEY_DOT",
+            "/": "KEY_SLASH",
+            "?": "KEY_SLASH",
+          };
+
+          // If the key is in the map, return the corresponding KEY_* code
+          if (keyMap[key]) {
+            return keyMap[key];
+          }
+
+          // For letters, handle uppercase and lowercase
+          if (/^[a-zA-Z]$/.test(key)) {
+            if (key === key.toLowerCase()) {
+              return `S-KEY_${key.toUpperCase()}`; // Lowercase -> S-KEY_A
+            } else {
+              return `KEY_${key.toUpperCase()}`; // Uppercase -> KEY_A
+            }
+          }
+
+          // For numbers, convert to uppercase and prepend "KEY_"
+          if (/^[0-9]$/.test(key)) {
+            return `KEY_${key}`;
+          }
+
+          // If the key is not recognized, return null
+          return null;
+        }
+
+        // Input event listener for the hidden input field
+        hiddenInput.addEventListener("input", function (event) {
+          const inputValue = hiddenInput.value; // Get the current value of the input field
+
+          // Send only the last character in the input field as a key press command
+          if (inputValue.length > 0) {
+            const lastChar = inputValue[inputValue.length - 1]; // Get the last character
+            const keyCode = getKeyCode(lastChar); // Map the character to a key code
+
+            if (keyCode) {
+              // Send the key press command
+              const message = JSON.stringify({
+                command: "press_key",
+                args: [keyCode],
+              });
+              console.log(`Sending message: ${message}`); // Debugging log
+              socket.send(message);
+            }
+          }
+
+          // Clear the input field after processing
+          hiddenInput.value = "";
+        });
+
+        // Keydown event listener for special keys (e.g., Backspace)
+        hiddenInput.addEventListener("keydown", function (event) {
+          const key = event.key; // Get the pressed key
+
+          // Handle Backspace explicitly
+          if (key === "Backspace") {
+            const message = JSON.stringify({
+              command: "press_key",
+              args: ["KEY_BACKSPACE"],
+            });
+            console.log(`Sending message: ${message}`); // Debugging log
+            socket.send(message);
+            event.preventDefault(); // Prevent default behavior (e.g., deleting the character in the input field)
+          }
+        });
       </script>
     </div>
   </body>

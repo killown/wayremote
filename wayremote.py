@@ -68,7 +68,7 @@ async def handle_client():
     ip_check_enabled = os.getenv('WAYFIRE_IPC_LAN_ONLY', '').lower() in ('true', '1', 't')
 
     if ip_check_enabled and not ip_in_allowed_range(client_ip):
-        await websocket.close()
+        await websocket.close(code=1000)  # Normal closure
         return
 
     while True:
@@ -86,14 +86,53 @@ async def handle_client():
                     await websocket.send(json.dumps({"error": "Command not specified"}))
                     continue
 
+                # Handle the get_cursor_position command
+                if command == "get_cursor_position":
+                    try:
+                        cursor_position = stipc.get_cursor_position()
+                        print(f"Sending cursor position: {cursor_position}")  # Debugging line
+                        await websocket.send(json.dumps(cursor_position))
+                    except Exception as e:
+                        await websocket.send(json.dumps({"error": f"Failed to get cursor position: {str(e)}"}))
+                    continue
+
                 # Handle the move_cursor command
                 if command == "move_cursor":
                     if len(args) != 2:
                         await websocket.send(json.dumps({"error": "Invalid arguments for move_cursor"}))
                         continue
-                    x, y = args
-                    stipc.move_cursor(x, y)  # Use the correct method
-                    await websocket.send(json.dumps({"status": "Mouse moved"}))
+                    try:
+                        x, y = args
+                        stipc.move_cursor(x, y)  # Use the correct method
+                        await websocket.send(json.dumps({"status": "Mouse moved"}))
+                    except Exception as e:
+                        await websocket.send(json.dumps({"error": f"Failed to move cursor: {str(e)}"}))
+                    continue
+
+                # Handle the press_key command
+                if command == "press_key":
+                    if len(args) != 1:
+                        await websocket.send(json.dumps({"error": "Invalid arguments for press_key"}))
+                        continue
+                    try:
+                        key = args[0]
+                        stipc.press_key(key)  # Use the correct method
+                        await websocket.send(json.dumps({"status": f"Key pressed: {key}"}))
+                    except Exception as e:
+                        await websocket.send(json.dumps({"error": f"Failed to press key: {str(e)}"}))
+                    continue
+
+                # Handle the click_button command
+                if command == "click_button":
+                    if len(args) != 2:
+                        await websocket.send(json.dumps({"error": "Invalid arguments for click_button"}))
+                        continue
+                    try:
+                        button, action = args
+                        stipc.click_button(button, action)  # Use the correct method
+                        await websocket.send(json.dumps({"status": f"Button clicked: {button} ({action})"}))
+                    except Exception as e:
+                        await websocket.send(json.dumps({"error": f"Failed to click button: {str(e)}"}))
                     continue
 
                 # Handle other commands
@@ -123,8 +162,8 @@ async def handle_client():
 
         except Exception as e:
             print(f"WebSocket error: {e}")
-            await websocket.close()
+            await websocket.close(code=1000)  # Normal closure
             break
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=5000)  # Port remains 5000
