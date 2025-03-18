@@ -7,6 +7,7 @@ import os
 import tldextract
 import time
 import shutil
+import subprocess
 from wayfire.ipc import WayfireSocket
 from wayfire.extra.ipc_utils import WayfireUtils
 from wayfire.extra.stipc import Stipc
@@ -61,6 +62,43 @@ def focus_if_already_open(streaming):
                 sock.set_view_fullscreen(view["id"], True)
                 return True
     return False
+
+class VolumeControl:
+    def __init__(self):
+        self.volume_step = 25  # Volume change step in percentage
+        self.max_volume = 200  # Maximum volume level
+        self.min_volume = 0  # Minimum volume level
+
+    def _get_current_volume(self):
+        """Get the current volume percentage."""
+        result = subprocess.run(
+            ["pactl", "get-sink-volume", "@DEFAULT_SINK@"],
+            capture_output=True,
+            text=True
+        )
+        # Extract the volume percentage from the output
+        volume_line = result.stdout.splitlines()[0]
+        volume_percent = int(volume_line.split("/")[1].strip().replace("%", ""))
+        return volume_percent
+
+    def _set_volume(self, volume):
+        """Set the volume to a specific percentage."""
+        subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{volume}%"])
+
+    def volup(self):
+        """Increase the volume by the volume step."""
+        current_volume = self._get_current_volume()
+        new_volume = min(self.max_volume, current_volume + self.volume_step)
+        self._set_volume(new_volume)
+        print(f"Volume increased to {new_volume}%")
+
+    def voldown(self):
+        """Decrease the volume by the volume step."""
+        current_volume = self._get_current_volume()
+        new_volume = max(self.min_volume, current_volume - self.volume_step)
+        self._set_volume(new_volume)
+        print(f"Volume decreased to {new_volume}%")
+
 
 @app.route('/')
 async def index():
@@ -188,6 +226,13 @@ async def handle_client():
                     except Exception as e:
                         await websocket.send(json.dumps({"error": f"Failed to click button: {str(e)}"}))
                     continue
+
+                if command == "volup":
+                    vol = VolumeControl()
+                    vol.volup()
+                if command == "voldown":
+                    vol = VolumeControl()
+                    vol.voldown()
 
                 # Handle other commands
                 if not hasattr(sock, command):
