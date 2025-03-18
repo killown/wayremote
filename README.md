@@ -21,7 +21,6 @@ A **remote control app** for Wayfire compositor using IPC (Inter-Process Communi
 - **Backend**: Python (Quart framework for WebSocket and HTTP server)
 - **Frontend**: HTML, CSS (Bootstrap), JavaScript
 - **Wayfire IPC**: Inter-process communication with Wayfire compositor
-- **Subprocess**: Opens URLs in Firefox using `subprocess.call`
 - **Volume Control**: Uses `pactl` or `amixer` for system volume adjustment.
 
 ---
