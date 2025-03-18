@@ -4,6 +4,9 @@ import socket
 import struct
 import ipaddress
 import os
+import tldextract
+import time
+import shutil
 from wayfire.ipc import WayfireSocket
 from wayfire.extra.ipc_utils import WayfireUtils
 from wayfire.extra.stipc import Stipc
@@ -36,9 +39,37 @@ ALLOWED_IP_RANGES = [
 def ip_in_allowed_range(ip):
     return any(ipaddress.ip_address(ip) in ipaddress.ip_network(range) for range in ALLOWED_IP_RANGES)
 
+def get_domain_name(url):
+    extracted = tldextract.extract(url)
+    return f"{extracted.domain}"
+
+def focus_if_already_open(streaming):
+    streaming = get_domain_name(streaming)
+    if streaming == "paramountplus":
+        streaming = "paramount"
+    print(streaming)
+    for view in sock.list_views():
+        title = view["title"].lower()
+        if len(title.split()) > 1:
+            pass
+        else:
+            continue
+        app_id = view["app-id"]
+        if "microsoft-edge" in app_id.lower():
+            if streaming in title:
+                sock.set_focus(view["id"])
+                sock.set_view_fullscreen(view["id"], True)
+                return True
+    return False
+
 @app.route('/')
 async def index():
     return await render_template('index.html')
+
+# Add the /streaming route
+@app.route('/streaming')
+async def streaming():
+    return await render_template('streaming.html')
 
 @app.route('/move_mouse', methods=['POST'])
 async def move_mouse():
@@ -121,6 +152,29 @@ async def handle_client():
                     except Exception as e:
                         await websocket.send(json.dumps({"error": f"Failed to press key: {str(e)}"}))
                     continue
+
+                if command == "open_url":
+                    if len(args) != 1:
+                        await websocket.send(json.dumps({"error": "Invalid arguments for open_url"}))
+                        continue
+                    url = args[0]  # Extract the URL from args[0]
+                    already_open = focus_if_already_open(url)
+                    if not already_open:
+                        try:
+                            # Open the URL in Firefox using subprocess
+                            # command = "mullvad-exclude"
+                            edge = "microsoft-edge-stable --app={0}".format(url)
+                            if shutil.which("mullvad-exclude"):
+                                edge = "mullvad-exclude microsoft-edge-stable --app={0}".format(url)
+                            stipc.run_cmd("killall -9 msedge")
+                            stipc.run_cmd(edge)
+                            time.sleep(2)
+                            focused_view_id = sock.get_focused_view()["id"]
+                            sock.set_view_fullscreen(focused_view_id, True)
+                            await websocket.send(json.dumps({"status": f"Opened URL: {url}"}))
+                        except Exception as e:
+                            await websocket.send(json.dumps({"error": f"Failed to open URL: {str(e)}"}))
+                        continue
 
                 # Handle the click_button command
                 if command == "click_button":
