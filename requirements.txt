@@ -1,4 +1,5 @@
 quart==0.18.4
 wayfire
+tomli
 python-socketio>=5.0.0
 websockets>=10.0

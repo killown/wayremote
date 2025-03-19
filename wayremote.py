@@ -1,13 +1,14 @@
 from quart import Quart, render_template, request, jsonify, websocket
 import json
 import socket
+import netifaces
 import struct
 import ipaddress
-import os
 import tldextract
 import time
 import shutil
 import subprocess
+import tomllib
 from wayfire.ipc import WayfireSocket
 from wayfire.extra.ipc_utils import WayfireUtils
 from wayfire.extra.stipc import Stipc
@@ -18,10 +19,47 @@ stipc = Stipc(sock)
 
 app = Quart(__name__)
 
-# Helper function to get local network range
+local_network_range = ""
+wayremote_port = 5000
+
+file_path = "config/wayremote.ini"
+try:
+    with open(file_path, "rb") as f:
+        config = tomllib.load(f)
+    local_network_range = config.get("local_network_range", "Key not found")
+except FileNotFoundError:
+    print(f"Error: The file '{file_path}' was not found.")
+except tomllib.TOMLDecodeError:
+    print(f"Error: The file '{file_path}' is not a valid TOML file.")
+except Exception as e:
+    print(f"An unexpected error occurred: {e}")
+
+def get_local_ip():
+    try:
+        # Get all network interfaces
+        interfaces = netifaces.interfaces()
+        for interface in interfaces:
+            # Skip common VPN interface names (adjust as needed)
+            if "tun" in interface or "tap" in interface or "vpn" in interface.lower():
+                continue  # Skip VPN interfaces
+
+            # Get addresses for the interface
+            addresses = netifaces.ifaddresses(interface)
+            if netifaces.AF_INET in addresses:
+                for link in addresses[netifaces.AF_INET]:
+                    ip = link['addr']
+                    if not ip.startswith('127.'):  # Skip loopback addresses
+                        return ip
+        return None
+    except Exception as e:
+        print(f"Error retrieving local IP: {e}")
+        return None
+
 def get_local_network_range():
-    hostname = socket.gethostname()
-    local_ip = socket.gethostbyname(hostname)
+    local_ip = get_local_ip()
+    if not local_ip:
+        return None
+
     netmask = '255.255.255.0'  # Assuming a common local netmask
     ip_bin = struct.unpack('>I', socket.inet_aton(local_ip))[0]
     netmask_bin = struct.unpack('>I', socket.inet_aton(netmask))[0]
@@ -30,8 +68,10 @@ def get_local_network_range():
     cidr_prefix = bin(netmask_bin).count('1')
     return f"{network_address}/{cidr_prefix}"
 
-local_network_range = get_local_network_range()
+if not local_network_range:
+    local_network_range = get_local_network_range()
 
+# You can allow more than one range. Use the list format: [local_network_range, "192.168.1.0/24"]
 ALLOWED_IP_RANGES = [
     local_network_range
 ]
@@ -134,17 +174,16 @@ async def keyboard_input():
 async def handle_client():
     client_ip = websocket.remote_addr
 
-    ip_check_enabled = os.getenv('WAYFIRE_IPC_LAN_ONLY', '').lower() in ('true', '1', 't')
-
-    if ip_check_enabled and not ip_in_allowed_range(client_ip):
-        await websocket.close(code=1000)  # Normal closure
+    # close the connection if the ip isn't whitin the allowed range
+    if not ip_in_allowed_range(client_ip):
+        await websocket.close(code=1000)
         return
 
     while True:
         try:
             # Receive a message from the WebSocket client
             message = await websocket.receive()
-            print(f"Received message: {message}")  # Debugging line
+            print(f"Received message: {message}")
 
             try:
                 data = json.loads(message)
@@ -191,16 +230,17 @@ async def handle_client():
                         await websocket.send(json.dumps({"error": f"Failed to press key: {str(e)}"}))
                     continue
 
+                if command == "shutdown":
+                    stipc.run_cmd("shutdown -h now")
+
                 if command == "open_url":
                     if len(args) != 1:
                         await websocket.send(json.dumps({"error": "Invalid arguments for open_url"}))
                         continue
-                    url = args[0]  # Extract the URL from args[0]
+                    url = args[0]  
                     already_open = focus_if_already_open(url)
                     if not already_open:
                         try:
-                            # Open the URL in Firefox using subprocess
-                            # command = "mullvad-exclude"
                             edge = "microsoft-edge-stable --app={0}".format(url)
                             if shutil.which("mullvad-exclude"):
                                 edge = "mullvad-exclude microsoft-edge-stable --app={0}".format(url)
@@ -213,6 +253,23 @@ async def handle_client():
                         except Exception as e:
                             await websocket.send(json.dumps({"error": f"Failed to open URL: {str(e)}"}))
                         continue
+
+                if command == "open_custom_url":
+                    if len(args) != 1:
+                        await websocket.send(json.dumps({"error": "Invalid arguments for open_url"}))
+                        continue
+                    url = args[0]  
+                    try:
+                            edge = "microsoft-edge-stable --app={0}".format(url)
+                            stipc.run_cmd("killall -9 msedge")
+                            stipc.run_cmd(edge)
+                            time.sleep(2)
+                            focused_view_id = sock.get_focused_view()["id"]
+                            sock.set_view_fullscreen(focused_view_id, True)
+                            await websocket.send(json.dumps({"status": f"Opened URL: {url}"}))
+                    except Exception as e:
+                            await websocket.send(json.dumps({"error": f"Failed to open URL: {str(e)}"}))
+                    continue
 
                 # Handle the click_button command
                 if command == "click_button":
@@ -249,7 +306,6 @@ async def handle_client():
                     args = [args]
 
                 try:
-                    # Pass arguments to the method
                     result = method(*args)
                     json_result = json.dumps(result, default=str)
                     await websocket.send(json_result)
@@ -261,8 +317,8 @@ async def handle_client():
 
         except Exception as e:
             print(f"WebSocket error: {e}")
-            await websocket.close(code=1000)  # Normal closure
+            await websocket.close(code=1000) 
             break
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)  # Port remains 5000
+    app.run(host="0.0.0.0", port=wayremote_port)
