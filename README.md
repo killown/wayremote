@@ -43,7 +43,8 @@ A **remote control app** for Wayfire compositor using IPC (Inter-Process Communi
    cd wayremote
    python wayremote.py
    firefox localhost:5000
+   
+![image](https://github.com/user-attachments/assets/0f13a527-9753-4a04-b786-e7eb95c485f7)
 
-![image](https://github.com/user-attachments/assets/3cc6a436-fdbb-46d0-8bb1-ead4bd490e16)
 
 
