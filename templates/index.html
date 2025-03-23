@@ -5,10 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/static/icons/favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
-    <link
-      rel="android-touch-icon"
-      href="/static/icons/android-touch-icon.png"
-    />
+    <link rel="android-touch-icon" href="/static/icons/android-touch-icon.png" />
     <!-- Bootstrap CSS -->
     <link
       rel="stylesheet"
@@ -30,17 +27,18 @@
     />
   </head>
   <body>
-    <div class="container mt-5">
+    <div class="container mt-1">
       <!-- Button Container for UP, Expo, Scale, and DOWN -->
       <div class="button-container">
         <!-- Button to open the streaming apps grid -->
-        <button id="streamingButton">Apps</button>
-        <button id="expoButton">Expo</button>
-        <button id="fullscreenButton">Fullscreen</button>
-        <button id="scaleButton">Scale</button>
+        <img id="streamingButton" src="/static/icons/app/menu.svg" alt="Menu" style="width: 64px; height: 64px;">
+        <img id="expoButton" src="/static/icons/app/expo.svg" alt="Menu" style="width: 64px; height: 64px;">
+        <img id="scaleButton" src="/static/icons/app/scale.svg" alt="Menu" style="width: 64px; height: 64px;">
+        <img id="fullscreenButton" src="/static/icons/app/fullscreen.svg" alt="Menu" style="width: 64px; height: 64px;">
+        <img id="closeButton" src="/static/icons/app/close.svg" alt="Menu" style="width: 64px; height: 64px;">
       </div>
 
-      <div id="mouseArea">Move your finger here</div>
+      <div id="mouseArea">  <img src="/static/icons/app/cursor.svg" alt="Menu" style="width: 128px; height: 128px;"></div>
 
       <div class="button-container">
         <button id="pageUpButton">PGUp</button>
@@ -76,19 +74,16 @@
           <i class="fas fa-volume-down"></i> -
         </button>
         <!-- Button to activate the keyboard -->
-        <button id="keyboardButton">Activate Keyboard</button>
+       <img id="keyboardButton" src="/static/icons/app/keyboard.svg" alt="Menu" style="width: 64px; height: 64px;">
         <!-- Button to open the streaming apps grid -->
         <button id="volUPButton" class="btn btn-primary mt-3">
           <i class="fas fa-volume-up"></i> +
         </button>
       </div>
 
-      <h3 class="mt-5">WebSocket Communication</h3>
-      <div id="output" class="mt-4"></div>
-
       <!-- Speed control slider -->
       <div id="speedControl" class="mt-4">
-        <label for="speedSlider">Movement Speed:</label>
+        <label for="speedSlider" style="color: white;">Mouse Cursor Speed:</label>
         <input
           type="range"
           id="speedSlider"
@@ -99,6 +94,8 @@
         />
         <span id="speedValue">20x</span>
       </div>
+
+      <div id="output" class="mt-4"></div>
 
       <div class="button-container">
         <button id="shutdownButton">Power OFF PC</button>
@@ -115,6 +112,7 @@
         const expoButton = document.getElementById("expoButton"); // Get the Expo button
         const shutdownButton = document.getElementById("shutdownButton"); // Get the Expo button
         const fullscreenButton = document.getElementById("fullscreenButton"); // Get fullscreen button
+        const closeButton = document.getElementById("closeButton"); // Get close button
         const scaleButton = document.getElementById("scaleButton"); // Get the Scale button
         const upButton = document.getElementById("upButton"); // Get the UP button
         const downButton = document.getElementById("downButton"); // Get the DOWN button
@@ -169,6 +167,15 @@
           });
           socket.send(message);
           console.log("Fullscreen button clicked: Sent KEY_F11");
+        });
+
+        // Close Button Click Event
+        closeButton.addEventListener("click", function () {
+          const message = JSON.stringify({
+            command: "close_view",
+          });
+          socket.send(message);
+          console.log("Close button clicked: Sent close view request");
         });
 
         // Scale Button Click Event

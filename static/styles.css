@@ -1,6 +1,6 @@
 body {
   font-family: Arial, sans-serif;
-  background-color: #f8f9fa;
+  background-color: #333130;
 }
 
 #mouseArea {
@@ -39,13 +39,29 @@ body {
   justify-content: center;
   gap: 10px; /* Space between buttons */
   margin: 20px auto;
+    background-color: #1d2021;
+  border-radius: 8px;
+  border-width: 0;
+  margin-top: 2px;
+  color: #ebdbb2;
+  font-size: 16px;
+  text-decoration: none;
+  transition:
+    box-shadow 0.15s,
+    transform 0.15s;
+  padding-left: 6px;
+  padding-right: 6px;
+  box-shadow:
+    rgba(0, 0, 0, 0.507) 0 1px 1px,
+    rgba(0, 0, 0, 0.555) 0 1px 1px,
+    #00000075 0 -4px 0 inset;
+}
 }
 
 /* Style for the Expo button */
 #expoButton {
   padding: 10px;
   font-size: 16px;
-  background-color: #28a745; /* Green color */
   color: white;
   border: none;
   border-radius: 5px;
@@ -54,9 +70,7 @@ body {
 }
 
 #streamingButton {
-  padding: 10px;
   font-size: 16px;
-  background-color: #000; /* Green color */
   color: white;
   border: none;
   border-radius: 5px;
@@ -72,7 +86,6 @@ body {
 #scaleButton {
   padding: 10px;
   font-size: 16px;
-  background-color: #dc3545; /* Red color */
   color: white;
   border: none;
   border-radius: 5px;
@@ -95,8 +108,8 @@ body {
 #rightButton {
   padding: 10px;
   font-size: 16px;
-  background-color: #007bff; /* Blue color */
-  color: white;
+  background-color: #ebdbb2; /* Blue color */
+  color: black;
   border: none;
   border-radius: 5px;
   cursor: pointer;
@@ -106,7 +119,6 @@ body {
 #fullscreenButton {
   padding: 10px;
   font-size: 16px;
-  background-color: #007bff; /* Blue color */
   color: white;
   border: none;
   border-radius: 5px;
@@ -128,9 +140,7 @@ body {
   display: block;
   width: 200px;
   margin: 20px auto;
-  padding: 10px;
-  font-size: 16px;
-  background-color: #007bff;
+  font-size: 64px;
   color: white;
   border: none;
   border-radius: 5px;
@@ -147,8 +157,8 @@ body {
   margin: 20px auto;
   padding: 10px;
   font-size: 16px;
-  background-color: #007bff;
-  color: white;
+  background-color: #ebdbb2;                                                                          ;
+  color: black;
   border: none;
   border-radius: 5px;
   cursor: pointer;
@@ -160,8 +170,8 @@ body {
   margin: 20px auto;
   padding: 10px;
   font-size: 16px;
-  background-color: #007bff;
-  color: white;
+  background-color: #ebdbb2;
+  color: black;
   border: none;
   border-radius: 5px;
   cursor: pointer;

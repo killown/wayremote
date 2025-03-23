@@ -1,17 +1,18 @@
-from quart import Quart, render_template, request, jsonify, websocket
-import json
-import socket
-import netifaces
-import struct
 import ipaddress
-import tldextract
-import time
+import json
 import shutil
+import socket
+import struct
 import subprocess
+import time
 import tomllib
-from wayfire.ipc import WayfireSocket
+
+import netifaces
+import tldextract
+from quart import Quart, jsonify, render_template, request, websocket
 from wayfire.extra.ipc_utils import WayfireUtils
 from wayfire.extra.stipc import Stipc
+from wayfire.ipc import WayfireSocket
 
 sock = WayfireSocket()
 utils = WayfireUtils(sock)
@@ -34,6 +35,7 @@ except tomllib.TOMLDecodeError:
 except Exception as e:
     print(f"An unexpected error occurred: {e}")
 
+
 def get_local_ip():
     try:
         # Get all network interfaces
@@ -55,6 +57,7 @@ def get_local_ip():
         print(f"Error retrieving local IP: {e}")
         return None
 
+
 def get_local_network_range():
     local_ip = get_local_ip()
     if not local_ip:
@@ -68,6 +71,7 @@ def get_local_network_range():
     cidr_prefix = bin(netmask_bin).count('1')
     return f"{network_address}/{cidr_prefix}"
 
+
 if not local_network_range:
     local_network_range = get_local_network_range()
 
@@ -77,12 +81,16 @@ ALLOWED_IP_RANGES = [
 ]
 
 # Check if IP is within allowed range
+
+
 def ip_in_allowed_range(ip):
     return any(ipaddress.ip_address(ip) in ipaddress.ip_network(range) for range in ALLOWED_IP_RANGES)
+
 
 def get_domain_name(url):
     extracted = tldextract.extract(url)
     return f"{extracted.domain}"
+
 
 def focus_if_already_open(streaming):
     streaming = get_domain_name(streaming)
@@ -102,6 +110,7 @@ def focus_if_already_open(streaming):
                 sock.set_view_fullscreen(view["id"], True)
                 return True
     return False
+
 
 class VolumeControl:
     def __init__(self):
@@ -145,9 +154,12 @@ async def index():
     return await render_template('index.html')
 
 # Add the /streaming route
+
+
 @app.route('/streaming')
 async def streaming():
     return await render_template('streaming.html')
+
 
 @app.route('/move_mouse', methods=['POST'])
 async def move_mouse():
@@ -160,6 +172,7 @@ async def move_mouse():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @app.route('/keyboard_input', methods=['POST'])
 async def keyboard_input():
     try:
@@ -169,6 +182,7 @@ async def keyboard_input():
         return jsonify({'status': 'Key received'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.websocket('/ws')
 async def handle_client():
@@ -233,11 +247,20 @@ async def handle_client():
                 if command == "shutdown":
                     stipc.run_cmd("shutdown -h now")
 
+                if command == "close_view":
+                    focused_view_id = None
+                    try:
+                        focused_view_id = sock.get_focused_view()["id"]
+                    except Exception as e:
+                        print(e)
+                    if focused_view_id:
+                        sock.close_view(focused_view_id)
+
                 if command == "open_url":
                     if len(args) != 1:
                         await websocket.send(json.dumps({"error": "Invalid arguments for open_url"}))
                         continue
-                    url = args[0]  
+                    url = args[0]
                     already_open = focus_if_already_open(url)
                     if not already_open:
                         try:
@@ -258,17 +281,17 @@ async def handle_client():
                     if len(args) != 1:
                         await websocket.send(json.dumps({"error": "Invalid arguments for open_url"}))
                         continue
-                    url = args[0]  
+                    url = args[0]
                     try:
-                            edge = "microsoft-edge-stable --app={0}".format(url)
-                            stipc.run_cmd("killall -9 msedge")
-                            stipc.run_cmd(edge)
-                            time.sleep(2)
-                            focused_view_id = sock.get_focused_view()["id"]
-                            sock.set_view_fullscreen(focused_view_id, True)
-                            await websocket.send(json.dumps({"status": f"Opened URL: {url}"}))
+                        edge = "microsoft-edge-stable --app={0}".format(url)
+                        stipc.run_cmd("killall -9 msedge")
+                        stipc.run_cmd(edge)
+                        time.sleep(2)
+                        focused_view_id = sock.get_focused_view()["id"]
+                        sock.set_view_fullscreen(focused_view_id, True)
+                        await websocket.send(json.dumps({"status": f"Opened URL: {url}"}))
                     except Exception as e:
-                            await websocket.send(json.dumps({"error": f"Failed to open URL: {str(e)}"}))
+                        await websocket.send(json.dumps({"error": f"Failed to open URL: {str(e)}"}))
                     continue
 
                 # Handle the click_button command
@@ -317,7 +340,7 @@ async def handle_client():
 
         except Exception as e:
             print(f"WebSocket error: {e}")
-            await websocket.close(code=1000) 
+            await websocket.close(code=1000)
             break
 
 if __name__ == "__main__":
