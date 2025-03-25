@@ -1,6 +1,82 @@
+/* Mobile-friendly adjustments */
+@media (max-width: 768px) {
+  .btn, .img-fluid {
+    margin: 5px;
+  }
+  #mouseArea {
+    height: 150px;
+  }
+  #speedControl {
+    padding: 0 15px;
+  }
+}
+
+/* General improvements */
+.btn {
+  padding: 10px 15px;
+  font-size: 1rem;
+}
+.img-fluid {
+  cursor: pointer;
+}
+#mouseArea {
+  touch-action: none; /* Prevent scrolling on touch devices */
+}
+/* Mobile-friendly adjustments */
+@media (max-width: 768px) {
+  .btn, .img-fluid {
+    margin: 5px;
+  }
+  #mouseArea {
+    height: 150px;
+  }
+  #speedControl {
+    padding: 0 15px;
+  }
+}
+
+/* General improvements */
+.btn {
+  padding: 10px 15px;
+  font-size: 1rem;
+}
+.img-fluid {
+  cursor: pointer;
+}
+#mouseArea {
+  touch-action: none; /* Prevent scrolling on touch devices */
+}
+/* Mobile-friendly adjustments */
+@media (max-width: 768px) {
+  .btn, .img-fluid {
+    margin: 5px;
+  }
+  #mouseArea {
+    height: 150px;
+  }
+  #speedControl {
+    padding: 0 15px;
+  }
+}
+
+/* General improvements */
+.btn {
+  padding: 10px 15px;
+  font-size: 1rem;
+}
+.img-fluid {
+  cursor: pointer;
+}
+#mouseArea {
+  touch-action: none; /* Prevent scrolling on touch devices */
+}
 body {
   font-family: Arial, sans-serif;
   background-color: #333130;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: white;
 }
 
 #mouseArea {
@@ -23,6 +99,30 @@ body {
   max-width: 800px;
   width: 100%;
   overflow: auto;
+}
+
+/* Style for script buttons */
+#scriptsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+#scriptsContainer button {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #ebdbb2;
+  color: black;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+#scriptsContainer button:hover {
+  background-color: #0056b3;
+  color: white;
 }
 
 .error {
