@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="/static/icons/favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png" />
-    <link rel="android-touch-icon" href="/static/icons/android-touch-icon.png" />
+    <link
+      rel="android-touch-icon"
+      href="/static/icons/android-touch-icon.png"
+    />
     <!-- Bootstrap CSS -->
     <link
       rel="stylesheet"
@@ -31,14 +34,45 @@
       <!-- Button Container for UP, Expo, Scale, and DOWN -->
       <div class="button-container">
         <!-- Button to open the streaming apps grid -->
-        <img id="streamingButton" src="/static/icons/app/menu.svg" alt="Menu" style="width: 64px; height: 64px;">
-        <img id="expoButton" src="/static/icons/app/expo.svg" alt="Menu" style="width: 64px; height: 64px;">
-        <img id="scaleButton" src="/static/icons/app/scale.svg" alt="Menu" style="width: 64px; height: 64px;">
-        <img id="fullscreenButton" src="/static/icons/app/fullscreen.svg" alt="Menu" style="width: 64px; height: 64px;">
-        <img id="closeButton" src="/static/icons/app/close.svg" alt="Menu" style="width: 64px; height: 64px;">
+        <img
+          id="streamingButton"
+          src="/static/icons/app/menu.svg"
+          alt="Menu"
+          style="width: 64px; height: 64px"
+        />
+        <img
+          id="expoButton"
+          src="/static/icons/app/expo.svg"
+          alt="Menu"
+          style="width: 64px; height: 64px"
+        />
+        <img
+          id="scaleButton"
+          src="/static/icons/app/scale.svg"
+          alt="Menu"
+          style="width: 64px; height: 64px"
+        />
+        <img
+          id="fullscreenButton"
+          src="/static/icons/app/fullscreen.svg"
+          alt="Menu"
+          style="width: 64px; height: 64px"
+        />
+        <img
+          id="closeButton"
+          src="/static/icons/app/close.svg"
+          alt="Menu"
+          style="width: 64px; height: 64px"
+        />
       </div>
 
-      <div id="mouseArea">  <img src="/static/icons/app/cursor.svg" alt="Menu" style="width: 128px; height: 128px;"></div>
+      <div id="mouseArea">
+        <img
+          src="/static/icons/app/cursor.svg"
+          alt="Menu"
+          style="width: 128px; height: 128px"
+        />
+      </div>
 
       <div class="button-container">
         <button id="pageUpButton">PGUp</button>
@@ -74,7 +108,12 @@
           <i class="fas fa-volume-down"></i> -
         </button>
         <!-- Button to activate the keyboard -->
-       <img id="keyboardButton" src="/static/icons/app/keyboard.svg" alt="Menu" style="width: 64px; height: 64px;">
+        <img
+          id="keyboardButton"
+          src="/static/icons/app/keyboard.svg"
+          alt="Menu"
+          style="width: 64px; height: 64px"
+        />
         <!-- Button to open the streaming apps grid -->
         <button id="volUPButton" class="btn btn-primary mt-3">
           <i class="fas fa-volume-up"></i> +
@@ -83,7 +122,9 @@
 
       <!-- Speed control slider -->
       <div id="speedControl" class="mt-4">
-        <label for="speedSlider" style="color: white;">Mouse Cursor Speed:</label>
+        <label for="speedSlider" style="color: white"
+          >Mouse Cursor Speed:</label
+        >
         <input
           type="range"
           id="speedSlider"
@@ -95,10 +136,26 @@
         <span id="speedValue">20x</span>
       </div>
 
+      <!-- Scroll speed control slider -->
+      <div id="scrollSpeedControl" class="mt-4">
+        <label for="scrollSpeedSlider" style="color: white"
+          >Scroll Speed:</label
+        >
+        <input
+          type="range"
+          id="scrollSpeedSlider"
+          min="1"
+          max="10"
+          step="1"
+          value="3"
+        />
+        <span id="scrollSpeedValue">3x</span>
+      </div>
+
       <div id="output" class="mt-4"></div>
 
       <div class="button-container">
-        <button id="shutdownButton">Power OFF PC</button>
+        <button id="commandsButton">Commands</button>
       </div>
 
       <!-- Hidden input field to activate the keyboard -->
@@ -110,7 +167,7 @@
         const hiddenInput = document.getElementById("hiddenInput");
         const keyboardButton = document.getElementById("keyboardButton");
         const expoButton = document.getElementById("expoButton"); // Get the Expo button
-        const shutdownButton = document.getElementById("shutdownButton"); // Get the Expo button
+        const commandsButton = document.getElementById("commandsButton"); // Get the Expo button
         const fullscreenButton = document.getElementById("fullscreenButton"); // Get fullscreen button
         const closeButton = document.getElementById("closeButton"); // Get close button
         const scaleButton = document.getElementById("scaleButton"); // Get the Scale button
@@ -130,24 +187,12 @@
         let upInterval = null; // Interval for UP button repeat
         let downInterval = null; // Interval for DOWN button repeat
 
-        // Shutdown Button Click Event
-        shutdownButton.addEventListener("click", function () {
-          // Display a confirmation dialog
-          const isConfirmed = confirm(
-            "Are you sure you want to send the shutdown command?",
-          );
-
-          // If the user confirms, send the message
-          if (isConfirmed) {
-            const message = JSON.stringify({
-              command: "shutdown",
-            });
-            socket.send(message);
-          } else {
-            // If the user cancels, do nothing or provide feedback
-            console.log("Command canceled by the user.");
-          }
-        });
+        // Add navigation to the streaming page
+        document
+          .getElementById("commandsButton")
+          .addEventListener("click", function () {
+            window.location.href = "/commands";
+          });
 
         // Expo Button Click Event
         expoButton.addEventListener("click", function () {
@@ -338,6 +383,16 @@
           speedValue.textContent = `${speedMultiplier}x`;
         });
 
+        // Scroll speed control slider
+        const scrollSpeedSlider = document.getElementById("scrollSpeedSlider");
+        const scrollSpeedValue = document.getElementById("scrollSpeedValue");
+        let scrollSpeed = 3; // Default scroll speed
+
+        scrollSpeedSlider.addEventListener("input", function () {
+          scrollSpeed = parseInt(this.value);
+          scrollSpeedValue.textContent = `${scrollSpeed}x`;
+        });
+
         // WebSocket event listeners
         socket.addEventListener("open", function () {
           console.log("Connected to WebSocket server");
@@ -368,67 +423,125 @@
             socket.send(JSON.stringify({ command: "get_cursor_position" }));
             socket.addEventListener("message", function handler(event) {
               const data = JSON.parse(event.data);
-              if (data.pos) {
-                resolve(data.pos);
+              if (Array.isArray(data) && data.length === 2) {
+                resolve({ x: data[0], y: data[1] });
                 socket.removeEventListener("message", handler); // Remove the listener after resolving
               }
             });
           });
         }
 
+        // Track two touches for scrolling
+        let touch1 = null;
+        let touch2 = null;
+
         // Touch start event listener (for smartphones)
         document
           .getElementById("mouseArea")
           .addEventListener("touchstart", function (event) {
             event.preventDefault(); // Prevent default touch behavior (e.g., scrolling)
-            const touch = event.touches[0];
-            const rect = event.target.getBoundingClientRect();
-            lastTouchPosition = {
-              x: touch.clientX - rect.left,
-              y: touch.clientY - rect.top,
-            };
-            isTouching = true; // Mark that a touch is active
-            touchStartTime = Date.now(); // Record the start time of the touch
+            if (event.touches.length === 2) {
+              touch1 = {
+                x: event.touches[0].clientX,
+                y: event.touches[0].clientY,
+              };
+              touch2 = {
+                x: event.touches[1].clientX,
+                y: event.touches[1].clientY,
+              };
+            } else {
+              // Fallback to single-touch for mouse control
+              const touch = event.touches[0];
+              const rect = event.target.getBoundingClientRect();
+              lastTouchPosition = {
+                x: touch.clientX - rect.left,
+                y: touch.clientY - rect.top,
+              };
+              isTouching = true;
+              touchStartTime = Date.now();
+            }
           });
 
         // Touch move event listener (for smartphones)
         document
           .getElementById("mouseArea")
-          .addEventListener("touchmove", async function (event) {
+          .addEventListener("touchmove", function (event) {
             event.preventDefault(); // Prevent default touch behavior (e.g., scrolling)
-            if (!isTouching || !lastTouchPosition) return;
+            if (event.touches.length === 2 && touch1 && touch2) {
+              const newTouch1 = {
+                x: event.touches[0].clientX,
+                y: event.touches[0].clientY,
+              };
+              const newTouch2 = {
+                x: event.touches[1].clientX,
+                y: event.touches[1].clientY,
+              };
 
-            const touch = event.touches[0]; // Get the first touch point
-            const rect = event.target.getBoundingClientRect();
-            const currentTouchPosition = {
-              x: touch.clientX - rect.left,
-              y: touch.clientY - rect.top,
-            };
+              // Calculate the average movement of the two touches
+              const deltaY1 = newTouch1.y - touch1.y;
+              const deltaY2 = newTouch2.y - touch2.y;
+              const avgDeltaY = (deltaY1 + deltaY2) / 2;
 
-            // Calculate the delta (change) in touch position
-            const deltaX =
-              (currentTouchPosition.x - lastTouchPosition.x) * speedMultiplier;
-            const deltaY =
-              (currentTouchPosition.y - lastTouchPosition.y) * speedMultiplier;
+              // Determine scroll direction
+              const scrollSpeed = 2; // Number of key presses per scroll event
+              if (avgDeltaY < -1) {
+                // Threshold to avoid accidental triggers
+                for (let i = 0; i < scrollSpeed; i++) {
+                  const message = JSON.stringify({
+                    command: "press_key",
+                    args: ["KEY_UP"],
+                  });
+                  socket.send(message);
+                  console.log(
+                    `Scroll up: Sent KEY_UP (${i + 1}/${scrollSpeed})`,
+                  );
+                }
+              } else if (avgDeltaY > 1) {
+                for (let i = 0; i < scrollSpeed; i++) {
+                  const message = JSON.stringify({
+                    command: "press_key",
+                    args: ["KEY_DOWN"],
+                  });
+                  socket.send(message);
+                  console.log(
+                    `Scroll down: Sent KEY_DOWN (${i + 1}/${scrollSpeed})`,
+                  );
+                }
+              }
 
-            try {
-              // Fetch the current cursor position
-              const cursorPosition = await fetchCursorPosition();
+              // Update touch positions for next move
+              touch1 = newTouch1;
+              touch2 = newTouch2;
+            } else if (isTouching && lastTouchPosition) {
+              // Fallback to single-touch for mouse control
+              const touch = event.touches[0];
+              const rect = event.target.getBoundingClientRect();
+              const currentTouchPosition = {
+                x: touch.clientX - rect.left,
+                y: touch.clientY - rect.top,
+              };
 
-              // Calculate the new cursor position relative to the current position
-              const x = cursorPosition.x + deltaX;
-              const y = cursorPosition.y + deltaY;
+              const deltaX =
+                (currentTouchPosition.x - lastTouchPosition.x) *
+                speedMultiplier;
+              const deltaY =
+                (currentTouchPosition.y - lastTouchPosition.y) *
+                speedMultiplier;
 
-              const message = JSON.stringify({
-                command: "move_cursor",
-                args: [x, y],
-              });
-              socket.send(message);
-
-              // Update the last touch position
-              lastTouchPosition = currentTouchPosition;
-            } catch (error) {
-              console.error("Error moving cursor:", error);
+              try {
+                fetchCursorPosition().then((cursorPosition) => {
+                  const x = cursorPosition.x + deltaX;
+                  const y = cursorPosition.y + deltaY;
+                  const message = JSON.stringify({
+                    command: "move_cursor",
+                    args: [x, y],
+                  });
+                  socket.send(message);
+                  lastTouchPosition = currentTouchPosition;
+                });
+              } catch (error) {
+                console.error("Error moving cursor:", error);
+              }
             }
           });
 
@@ -437,21 +550,21 @@
           .getElementById("mouseArea")
           .addEventListener("touchend", function (event) {
             event.preventDefault(); // Prevent default touch behavior (e.g., scrolling)
-            isTouching = false; // Mark that the touch has ended
-
-            // Calculate the duration of the touch
-            const touchDuration = Date.now() - touchStartTime;
-
-            // If the touch duration is less than the threshold, consider it a click
-            if (touchDuration < CLICK_THRESHOLD) {
-              const message = JSON.stringify({
-                command: "click_button",
-                args: ["BTN_LEFT", "full"],
-              });
-              socket.send(message);
-              console.log("Click detected: Sent BTN_LEFT");
-            } else {
-              console.log("Hold detected: No click sent");
+            if (event.touches.length < 2) {
+              touch1 = null;
+              touch2 = null;
+            }
+            if (event.touches.length === 0) {
+              isTouching = false;
+              const touchDuration = Date.now() - touchStartTime;
+              if (touchDuration < CLICK_THRESHOLD) {
+                const message = JSON.stringify({
+                  command: "click_button",
+                  args: ["BTN_LEFT", "full"],
+                });
+                socket.send(message);
+                console.log("Click detected: Sent BTN_LEFT");
+              }
             }
           });
 

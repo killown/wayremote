@@ -1,27 +1,42 @@
+import base64
 import ipaddress
 import json
+import os
+import re
+import secrets  # For secret key generation
 import shutil
 import socket
 import struct
 import subprocess
 import time
 import tomllib
+from pathlib import Path
 
 import netifaces
 import tldextract
-from quart import Quart, jsonify, render_template, request, websocket
+from quart import (Quart, flash, jsonify, redirect, render_template, request,
+                   session, url_for, websocket)
+from quart.helpers import flash
 from wayfire.extra.ipc_utils import WayfireUtils
 from wayfire.extra.stipc import Stipc
 from wayfire.ipc import WayfireSocket
+from werkzeug.security import check_password_hash
 
 sock = WayfireSocket()
 utils = WayfireUtils(sock)
 stipc = Stipc(sock)
 
+
 app = Quart(__name__)
+app.secret_key = secrets.token_hex(32)
+app.config['SESSION_TYPE'] = 'redis'  # Or 'filesystem' for simpler setup
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour session lifetime
 
 local_network_range = ""
 wayremote_port = 5000
+
+# Define the upload directory
+UPLOAD_DIR = os.path.expanduser("~/Downloads")
 
 file_path = "config/wayremote.ini"
 try:
@@ -155,6 +170,82 @@ async def index():
 
 # Add the /streaming route
 
+SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), "scripts")
+
+
+@app.route('/login', methods=['GET', 'POST'])
+async def login():
+    if request.method == 'POST':
+        form = await request.form
+        username = form.get('username', '').strip()
+        password = form.get('password', '').strip()
+
+        # Load config file
+        config_path = Path(__file__).parent / "config" / "wayremote.ini"
+        try:
+            with open(config_path, "rb") as f:
+                config = tomllib.load(f)
+
+            # Get credentials from config
+            cfg_username = config.get("username", "")
+            cfg_password_hash = config.get("password_hash", "")
+
+            if username == cfg_username and check_password_hash(cfg_password_hash, password):
+                session['logged_in'] = True
+                session.permanent = True
+                return redirect(url_for('index'))
+
+        except Exception as e:
+            print(f"Error loading config: {e}")
+            await flash("System error - please try again")
+            return await render_template('login.html', error=True)
+
+        await flash('Invalid credentials')
+        return await render_template('login.html', error=True)
+
+    return await render_template('login.html', error=False)
+
+
+@app.route('/logout')
+async def logout():
+    session.pop('logged_in', None)
+    return redirect(url_for('login'))
+
+# Add this before_request handler
+
+
+@app.before_request
+async def check_auth():
+    # Allow login page and static files
+    if request.path in ['/login'] or request.path.startswith('/static/'):
+        return
+
+    # Redirect to login if not authenticated
+    if not session.get('logged_in'):
+        return redirect(url_for('login'))
+
+
+@app.route("/scripts")
+def list_scripts():
+    scripts = []
+    for filename in os.listdir(SCRIPTS_DIR):
+        if filename.endswith(".py"):
+            script_path = os.path.join(SCRIPTS_DIR, filename)
+            with open(script_path, "r") as file:
+                content = file.read()
+                # Extract the label from the template
+                label_match = re.search(r'LABEL:\s*(.*)', content)
+                label = label_match.group(1).strip() if label_match else filename.replace(".py", "")
+                scripts.append({"filename": filename, "label": label})
+    return scripts
+
+# Route to serve the commands.html page
+
+
+@app.route("/commands")
+async def commands():
+    return await render_template("commands.html")
+
 
 @app.route('/streaming')
 async def streaming():
@@ -211,7 +302,7 @@ async def handle_client():
                 # Handle the get_cursor_position command
                 if command == "get_cursor_position":
                     try:
-                        cursor_position = stipc.get_cursor_position()
+                        cursor_position = sock.get_cursor_position()
                         print(f"Sending cursor position: {cursor_position}")  # Debugging line
                         await websocket.send(json.dumps(cursor_position))
                     except Exception as e:
@@ -244,8 +335,52 @@ async def handle_client():
                         await websocket.send(json.dumps({"error": f"Failed to press key: {str(e)}"}))
                     continue
 
+               # Handle the execute_script command
+                if command == "execute_script":
+                    script = args[0] if args else None
+                    if not script:
+                        await websocket.send(json.dumps({"error": "Script not specified"}))
+                        continue
+
+                    script_path = os.path.join(SCRIPTS_DIR, script)
+
+                    if not os.path.exists(script_path):
+                        await websocket.send(json.dumps({"error": "Script not found"}))
+                        continue
+
+                    try:
+                        # Execute the script
+                        os.system(f"python {script_path}")
+                        await websocket.send(json.dumps({"message": f"Executed script: {script}"}))
+                    except Exception as e:
+                        await websocket.send(json.dumps({"error": f"Failed to execute script: {str(e)}"}))
+                    continue
+
                 if command == "shutdown":
                     stipc.run_cmd("shutdown -h now")
+
+                # Handle the upload_file command
+                if command == "upload_file":
+                    if not args or "filename" not in args or "file_data" not in args:
+                        await websocket.send(json.dumps({"error": "Invalid arguments for upload_file"}))
+                        continue
+
+                    filename = args["filename"]
+                    file_data = args["file_data"]
+
+                    try:
+                        # Decode the base64 file data
+                        file_bytes = base64.b64decode(file_data)
+                        file_path = os.path.join(UPLOAD_DIR, filename)
+
+                        # Save the file to the upload directory
+                        with open(file_path, "wb") as file:
+                            file.write(file_bytes)
+
+                        await websocket.send(json.dumps({"message": f"File uploaded successfully: {filename}"}))
+                    except Exception as e:
+                        await websocket.send(json.dumps({"error": f"Failed to upload file: {str(e)}"}))
+                    continue
 
                 if command == "close_view":
                     focused_view_id = None
