@@ -38,17 +38,25 @@ wayremote_port = 5000
 # Define the upload directory
 UPLOAD_DIR = os.path.expanduser("~/Downloads")
 
-file_path = "config/wayremote.ini"
-try:
-    with open(file_path, "rb") as f:
-        config = tomllib.load(f)
-    local_network_range = config.get("local_network_range", "Key not found")
-except FileNotFoundError:
-    print(f"Error: The file '{file_path}' was not found.")
-except tomllib.TOMLDecodeError:
-    print(f"Error: The file '{file_path}' is not a valid TOML file.")
-except Exception as e:
-    print(f"An unexpected error occurred: {e}")
+config_paths = [
+    os.path.expanduser("~/.config/wayremote.ini"),  # First priority
+    "config/wayremote.ini"  # Fallback
+]
+
+local_network_range = "Key not found"  # Default value
+
+for file_path in config_paths:
+    try:
+        with open(file_path, "rb") as f:
+            config = tomllib.load(f)
+            local_network_range = config.get("local_network_range", "Key not found")
+            break  # Stop after the first successful read
+    except FileNotFoundError:
+        print(f"Info: The file '{file_path}' was not found.")
+    except tomllib.TOMLDecodeError:
+        print(f"Error: The file '{file_path}' is not a valid TOML file.")
+    except Exception as e:
+        print(f"An unexpected error occurred while reading '{file_path}': {e}")
 
 
 def get_local_ip():
@@ -181,24 +189,29 @@ async def login():
         password = form.get('password', '').strip()
 
         # Load config file
-        config_path = Path(__file__).parent / "config" / "wayremote.ini"
-        try:
-            with open(config_path, "rb") as f:
-                config = tomllib.load(f)
+        for config_path in config_paths:
+            try:
+                with open(config_path, "rb") as f:
+                    config = tomllib.load(f)
 
-            # Get credentials from config
-            cfg_username = config.get("username", "")
-            cfg_password_hash = config.get("password_hash", "")
+                # Get credentials from config
+                cfg_username = config.get("username", "")
+                cfg_password_hash = config.get("password_hash", "")
 
-            if username == cfg_username and check_password_hash(cfg_password_hash, password):
-                session['logged_in'] = True
-                session.permanent = True
-                return redirect(url_for('index'))
+                if username == cfg_username and check_password_hash(cfg_password_hash, password):
+                    session['logged_in'] = True
+                    session.permanent = True
+                    return redirect(url_for('index'))
 
-        except Exception as e:
-            print(f"Error loading config: {e}")
-            await flash("System error - please try again")
-            return await render_template('login.html', error=True)
+            except FileNotFoundError:
+                continue  # Try the next path
+            except Exception as e:
+                print(f"Error loading config: {e}")
+                await flash("System error - please try again")
+                return await render_template('login.html', error=True)
+
+        await flash('Invalid credentials')
+        return await render_template('login.html', error=True)
 
         await flash('Invalid credentials')
         return await render_template('login.html', error=True)
