@@ -121,10 +121,8 @@
       </div>
 
       <!-- Speed control slider -->
-      <div id="speedControl" class="mt-4">
-        <label for="speedSlider" style="color: white"
-          >Mouse Cursor Speed:</label
-        >
+      <div id="speedControl">
+        <label for="speedSlider" style="color: white">Touchpad Speed:</label>
         <input
           type="range"
           id="speedSlider"
@@ -133,11 +131,11 @@
           step="0.1"
           value="20"
         />
-        <span id="speedValue">20x</span>
+        <span id="speedValue" style="color: white">20x</span>
       </div>
 
       <!-- Scroll speed control slider -->
-      <div id="scrollSpeedControl" class="mt-4">
+      <div id="speedControl">
         <label for="scrollSpeedSlider" style="color: white"
           >Scroll Speed:</label
         >
@@ -149,7 +147,7 @@
           step="1"
           value="3"
         />
-        <span id="scrollSpeedValue">3x</span>
+        <span id="scrollSpeedValue" style="color: white">3x</span>
       </div>
 
       <div id="output" class="mt-4"></div>
@@ -483,7 +481,7 @@
               const avgDeltaY = (deltaY1 + deltaY2) / 2;
 
               // Determine scroll direction
-              const scrollSpeed = 2; // Number of key presses per scroll event
+
               if (avgDeltaY < -1) {
                 // Threshold to avoid accidental triggers
                 for (let i = 0; i < scrollSpeed; i++) {
