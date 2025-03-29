@@ -8,6 +8,7 @@ import shutil
 import socket
 import struct
 import subprocess
+import threading
 import time
 import tomllib
 from pathlib import Path
@@ -25,7 +26,6 @@ from werkzeug.security import check_password_hash
 sock = WayfireSocket()
 utils = WayfireUtils(sock)
 stipc = Stipc(sock)
-
 
 app = Quart(__name__)
 app.secret_key = secrets.token_hex(32)
@@ -57,6 +57,68 @@ for file_path in config_paths:
         print(f"Error: The file '{file_path}' is not a valid TOML file.")
     except Exception as e:
         print(f"An unexpected error occurred while reading '{file_path}': {e}")
+
+
+def get_temporary_cursor_size():
+    config_path = os.path.expanduser("~/.config/wayremote.ini")
+
+    try:
+        with open(config_path, "rb") as f:
+            config = tomllib.load(f)
+        return config.get("temporary_cursor_size", 64)  # Default to 64 if not found
+    except FileNotFoundError:
+        print(f"Config file not found at {config_path}")
+        return 64
+    except tomllib.TOMLDecodeError:
+        print("Invalid TOML format in config file")
+        return 64
+
+
+def get_cursor_size():
+    try:
+        result = subprocess.run(
+            "gsettings get org.gnome.desktop.interface cursor-size".split(),
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return int(result.stdout.strip())
+    except (ValueError, subprocess.SubprocessError) as e:
+        print(f"Error getting cursor size: {e}")
+        return 32  # Fallback to default size
+
+
+DEFAULT_CURSOR_SIZE = get_cursor_size()
+TEMPORARY_CURSOR_SIZE = get_temporary_cursor_size()
+RESET_DELAY_SECONDS = 10
+
+# Global timer object (None initially)
+reset_timer = None
+
+
+def set_cursor_size(size):
+    """Set cursor size using gsettings (or wayfire-msg)."""
+    subprocess.run([
+        "gsettings", "set", "org.gnome.desktop.interface",
+        "cursor-size", str(size)
+    ])
+
+
+def schedule_cursor_reset():
+    """Cancel any pending reset and schedule a new one."""
+    global reset_timer
+
+    # Cancel previous timer (if active)
+    if reset_timer:
+        reset_timer.cancel()
+
+    # Schedule new reset
+    reset_timer = threading.Timer(
+        RESET_DELAY_SECONDS,
+        set_cursor_size,
+        args=[DEFAULT_CURSOR_SIZE]
+    )
+    reset_timer.start()
 
 
 def get_local_ip():
@@ -314,6 +376,9 @@ async def handle_client():
 
                 # Handle the get_cursor_position command
                 if command == "get_cursor_position":
+                    set_cursor_size(TEMPORARY_CURSOR_SIZE)
+                    # Reset after delay (cancels any pending reset)
+                    schedule_cursor_reset()
                     try:
                         cursor_position = sock.get_cursor_position()
                         print(f"Sending cursor position: {cursor_position}")  # Debugging line
@@ -412,9 +477,9 @@ async def handle_client():
                     already_open = focus_if_already_open(url)
                     if not already_open:
                         try:
-                            edge = "microsoft-edge-stable --app={0}".format(url)
+                            edge = f"XDG_SESSION_TYPE=wayland MOZ_ENABLE_WAYLAND=1 GDK_BACKEND=wayland microsoft-edge-stable --enable-features=UseOzonePlatform --ozone-platform=wayland --gtk-version=4 --app={url}"
                             if shutil.which("mullvad-exclude"):
-                                edge = "mullvad-exclude microsoft-edge-stable --app={0}".format(url)
+                                edge = f"XDG_SESSION_TYPE=wayland MOZ_ENABLE_WAYLAND=1 GDK_BACKEND=wayland mullvad-exclude microsoft-edge-stable --enable-features=UseOzonePlatform --ozone-platform=wayland --gtk-version=4 --app={url}"
                             stipc.run_cmd("killall -9 msedge")
                             stipc.run_cmd(edge)
                             time.sleep(2)
@@ -431,7 +496,9 @@ async def handle_client():
                         continue
                     url = args[0]
                     try:
-                        edge = "microsoft-edge-stable --app={0}".format(url)
+                        edge = f"XDG_SESSION_TYPE=wayland MOZ_ENABLE_WAYLAND=1 GDK_BACKEND=wayland microsoft-edge-stable --enable-features=UseOzonePlatform --ozone-platform=wayland --gtk-version=4 --app={url}"
+                        if shutil.which("mullvad-exclude"):
+                            edge = f"XDG_SESSION_TYPE=wayland MOZ_ENABLE_WAYLAND=1 GDK_BACKEND=wayland mullvad-exclude microsoft-edge-stable --enable-features=UseOzonePlatform --ozone-platform=wayland --gtk-version=4 --app={url}"
                         stipc.run_cmd("killall -9 msedge")
                         stipc.run_cmd(edge)
                         time.sleep(2)
