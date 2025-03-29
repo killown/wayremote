@@ -95,6 +95,9 @@
           <i class="bi bi-arrow-left"></i>
           <!-- Left arrow icon -->
         </button>
+        <button id="enterButton" class="btn btn-primary">
+          Enter
+        </button>
         <button id="rightButton" class="btn btn-primary">
           <i class="bi bi-arrow-right"></i>
           <!-- Right arrow icon -->
@@ -174,6 +177,7 @@
         const pageUpButton = document.getElementById("pageUpButton"); // Get the Page Up button
         const pageDownButton = document.getElementById("pageDownButton"); // Get the Page Down button
         const leftButton = document.getElementById("leftButton"); // Get the Left button
+        const enterButton = document.getElementById("enterButton"); // Get the Left button
         const rightButton = document.getElementById("rightButton"); // Get the Right button
         const backButton = document.getElementById("backButton"); // Get the Right button
         const forwardButton = document.getElementById("forwardButton"); // Get the Right button
@@ -336,6 +340,17 @@
           socket.send(message);
           console.log("Left button clicked: Sent KEY_LEFT");
         });
+
+        // enter Button Click Event
+        enterButton.addEventListener("click", function () {
+          const message = JSON.stringify({
+            command: "press_key",
+            args: ["KEY_ENTER"], // Command for browser back navigation
+          });
+          socket.send(message);
+          console.log("Enter button pressed: Sent KEY_ENTER");
+        });
+
 
         // Right Button Click Event (Navigate Forward)
         rightButton.addEventListener("click", function () {
@@ -568,10 +583,18 @@
 
         // Function to map characters to key codes
         function getKeyCode(key) {
+          console.log(key);
           // Map special keys to their corresponding KEY_* codes
           const keyMap = {
             Backspace: "KEY_BACKSPACE",
             Enter: "KEY_ENTER",
+            "NUMPAD_ENTER": "KEY_ENTER",
+            "Enter": "KEY_ENTER",     
+            "Go": "KEY_ENTER",        
+            "Search": "KEY_ENTER",    
+            "Done": "KEY_ENTER",      
+            "\r": "KEY_ENTER",        
+            "\n": "KEY_ENTER",        
             Shift: "KEY_LEFTSHIFT",
             Control: "KEY_LEFTCTRL",
             Alt: "KEY_LEFTALT",
@@ -639,6 +662,7 @@
             "?": "KEY_SLASH",
           };
 
+
           // If the key is in the map, return the corresponding KEY_* code
           if (keyMap[key]) {
             return keyMap[key];
@@ -647,9 +671,9 @@
           // For letters, handle uppercase and lowercase
           if (/^[a-zA-Z]$/.test(key)) {
             if (key === key.toLowerCase()) {
-              return `S-KEY_${key.toUpperCase()}`; // Lowercase -> S-KEY_A
+              return `KEY_${key.toUpperCase()}`; // Lowercase -> S-KEY_A
             } else {
-              return `KEY_${key.toUpperCase()}`; // Uppercase -> KEY_A
+              return `S-KEY_${key.toUpperCase()}`; // Uppercase -> KEY_A
             }
           }
 
