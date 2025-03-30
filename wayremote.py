@@ -55,7 +55,8 @@ wayremote_port = 5000
 # Define the upload directory
 UPLOAD_DIR = os.path.expanduser("~/Downloads")
 
-MENU_TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates/menu")
+BASE_DIR = Path(__file__).parent
+MENU_TEMPLATES_DIR = BASE_DIR / "templates/menu"
 
 config_paths = [
     os.path.expanduser("~/.config/wayremote.ini"),  # First priority
@@ -678,8 +679,8 @@ async def menu():
     menu_dir = Path("templates/menu")
     print(f"DEBUG: Scanning menu directory: {menu_dir.absolute()}")
 
-    if menu_dir.exists():
-        for file in menu_dir.glob("*.html"):
+    if MENU_TEMPLATES_DIR.exists():
+        for file in MENU_TEMPLATES_DIR.glob("*.html"):
             try:
                 with open(file, "r") as f:
                     content = f.read()
