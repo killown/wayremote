@@ -35,7 +35,7 @@
       <div class="button-container">
         <!-- Button to open the streaming apps grid -->
         <img
-          id="streamingButton"
+          id="menuButton"
           src="/static/icons/app/menu.svg"
           alt="Menu"
           style="width: 64px; height: 64px"
@@ -742,11 +742,11 @@
           }
         });
 
-        // Add navigation to the streaming page
+        // Add navigation to the menu page
         document
-          .getElementById("streamingButton")
+          .getElementById("menuButton")
           .addEventListener("click", function () {
-            window.location.href = "/streaming";
+            window.location.href = "/menu";
           });
       </script>
     </div>

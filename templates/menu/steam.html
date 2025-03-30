@@ -1,0 +1,26 @@
+<!-- TITLE: Steam -->
+<!-- ICON: https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Steam_2016_logo_black.svg/590px-Steam_2016_logo_black.svg.png -->
+<!-- URL: /steam -->
+<!-- HANDLER: location -->
+<!-- POSITION: 1 -->
+<div class="col">
+  <div class="card h-100 text-center">
+    <img
+      src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Steam_2016_logo_black.svg/590px-Steam_2016_logo_black.svg.png"
+      class="card-img-top mx-auto mt-3"
+      alt="Steam"
+      id="steamApp"
+    />
+    <div class="card-body">
+      <h5 class="card-title">Steam</h5>
+    </div>
+  </div>
+</div>
+<script>
+  // Steam card specific handler
+  document.addEventListener("DOMContentLoaded", function () {
+    document.getElementById("steamApp").addEventListener("click", function () {
+      window.location.href = "/steam";
+    });
+  });
+</script>

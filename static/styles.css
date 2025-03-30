@@ -223,7 +223,6 @@ h1, h2, h3, h4, h5, h6 {
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  width: 100px; /* Fixed width */
 }
 
 #upButton:hover,
