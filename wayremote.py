@@ -402,11 +402,18 @@ SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), "scripts")
 async def apps():
     apps = []
     for app_info in Gio.AppInfo.get_all():
+        if not app_info.should_show():  # Skip hidden apps
+            continue
+
         icon = app_info.get_icon()
+        desktop_file = (
+            app_info.get_id()
+        )  # Gets the desktop file name (e.g. "firefox.desktop")
+
         apps.append(
             {
                 "name": app_info.get_name(),
-                "command": app_info.get_commandline(),
+                "command": desktop_file,  # Now passing desktop file instead of commandline
                 "icon": icon.get_names()[0]
                 if hasattr(icon, "get_names")
                 else "application-default-icon",
@@ -544,10 +551,26 @@ async def launch_app():
         data = await request.get_json()
         command = data.get("command")
 
-        if command:
-            subprocess.Popen(command, shell=True)
-            return jsonify({"status": "success"})
-        return jsonify({"error": "No command provided"}), 400
+        if not command:
+            return jsonify({"error": "No command provided"}), 400
+
+        # Remove .desktop extension if present
+        if command.endswith(".desktop"):
+            command = command[:-8]  # Remove '.desktop' suffix
+
+        try:
+            # First try gtk-launch
+            subprocess.Popen(["gtk-launch", command])
+            return jsonify({"status": "success", "method": "gtk-launch"})
+        except Exception as e:
+            print(f"gtk-launch failed: {e}")
+            # Fallback to default application launch
+            app_info = Gio.DesktopAppInfo.new(command + ".desktop")
+            if app_info:
+                app_info.launch()
+                return jsonify({"status": "success", "method": "desktop-app-info"})
+            return jsonify({"error": "Failed to launch application"}), 500
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
