@@ -95,9 +95,7 @@
           <i class="bi bi-arrow-left"></i>
           <!-- Left arrow icon -->
         </button>
-        <button id="enterButton" class="btn btn-primary">
-          Enter
-        </button>
+        <button id="enterButton" class="btn btn-primary">Enter</button>
         <button id="rightButton" class="btn btn-primary">
           <i class="bi bi-arrow-right"></i>
           <!-- Right arrow icon -->
@@ -351,7 +349,6 @@
           console.log("Enter button pressed: Sent KEY_ENTER");
         });
 
-
         // Right Button Click Event (Navigate Forward)
         rightButton.addEventListener("click", function () {
           const message = JSON.stringify({
@@ -430,29 +427,52 @@
           outputDiv.innerHTML = `<p>Connection closed</p>`;
         });
 
-        // Function to fetch the current cursor position
+        // Track cursor position locally
+        let cursorPosition = { x: 0, y: 0 };
+
+        // Function to fetch the current cursor position and update local tracking
         function fetchCursorPosition() {
           return new Promise((resolve) => {
             socket.send(JSON.stringify({ command: "get_cursor_position" }));
-            socket.addEventListener("message", function handler(event) {
+            const messageHandler = function (event) {
               const data = JSON.parse(event.data);
               if (Array.isArray(data) && data.length === 2) {
-                resolve({ x: data[0], y: data[1] });
-                socket.removeEventListener("message", handler); // Remove the listener after resolving
+                cursorPosition = { x: data[0], y: data[1] };
+                updateRemoteCursorPosition(cursorPosition.x, cursorPosition.y);
+                resolve(cursorPosition);
+                socket.removeEventListener("message", messageHandler);
               }
-            });
+            };
+            socket.addEventListener("message", messageHandler);
           });
         }
 
-        // Track two touches for scrolling
-        let touch1 = null;
-        let touch2 = null;
+        // Function to update the visual remote cursor position
+        function updateRemoteCursorPosition(x, y) {
+          const mouseArea = document.getElementById("mouseArea");
+          const remoteCursor = document.querySelector("#mouseArea img");
 
-        // Touch start event listener (for smartphones)
+          if (mouseArea && remoteCursor) {
+            const rect = mouseArea.getBoundingClientRect();
+            const posX = (x / screen.width) * rect.width;
+            const posY = (y / screen.height) * rect.height;
+
+            remoteCursor.style.position = "absolute";
+            remoteCursor.style.left = `${posX}px`;
+            remoteCursor.style.top = `${posY}px`;
+            remoteCursor.style.transform = "translate(-50%, -50%)";
+          }
+        }
+
+        // Add these variables at the top with your other variables
+        let initialServerCursorPos = null;
+        let initialClientTouchPos = null;
+
+        // Modified touchstart event listener
         document
           .getElementById("mouseArea")
           .addEventListener("touchstart", function (event) {
-            event.preventDefault(); // Prevent default touch behavior (e.g., scrolling)
+            event.preventDefault();
             if (event.touches.length === 2) {
               touch1 = {
                 x: event.touches[0].clientX,
@@ -463,24 +483,32 @@
                 y: event.touches[1].clientY,
               };
             } else {
-              // Fallback to single-touch for mouse control
               const touch = event.touches[0];
               const rect = event.target.getBoundingClientRect();
-              lastTouchPosition = {
+              initialClientTouchPos = {
                 x: touch.clientX - rect.left,
                 y: touch.clientY - rect.top,
               };
-              isTouching = true;
-              touchStartTime = Date.now();
+
+              // Fetch cursor position only once at start
+              fetchCursorPosition().then((cursorPosition) => {
+                initialServerCursorPos = {
+                  x: cursorPosition.x,
+                  y: cursorPosition.y,
+                };
+                isTouching = true;
+                touchStartTime = Date.now();
+              });
             }
           });
 
-        // Touch move event listener (for smartphones)
+        // Modified touchmove event listener
         document
           .getElementById("mouseArea")
           .addEventListener("touchmove", function (event) {
-            event.preventDefault(); // Prevent default touch behavior (e.g., scrolling)
+            event.preventDefault();
             if (event.touches.length === 2 && touch1 && touch2) {
+              // Two-finger scroll handling (unchanged)
               const newTouch1 = {
                 x: event.touches[0].clientX,
                 y: event.touches[0].clientY,
@@ -490,24 +518,17 @@
                 y: event.touches[1].clientY,
               };
 
-              // Calculate the average movement of the two touches
               const deltaY1 = newTouch1.y - touch1.y;
               const deltaY2 = newTouch2.y - touch2.y;
               const avgDeltaY = (deltaY1 + deltaY2) / 2;
 
-              // Determine scroll direction
-
               if (avgDeltaY < -1) {
-                // Threshold to avoid accidental triggers
                 for (let i = 0; i < scrollSpeed; i++) {
                   const message = JSON.stringify({
                     command: "press_key",
                     args: ["KEY_UP"],
                   });
                   socket.send(message);
-                  console.log(
-                    `Scroll up: Sent KEY_UP (${i + 1}/${scrollSpeed})`,
-                  );
                 }
               } else if (avgDeltaY > 1) {
                 for (let i = 0; i < scrollSpeed; i++) {
@@ -516,59 +537,57 @@
                     args: ["KEY_DOWN"],
                   });
                   socket.send(message);
-                  console.log(
-                    `Scroll down: Sent KEY_DOWN (${i + 1}/${scrollSpeed})`,
-                  );
                 }
               }
 
-              // Update touch positions for next move
               touch1 = newTouch1;
               touch2 = newTouch2;
-            } else if (isTouching && lastTouchPosition) {
-              // Fallback to single-touch for mouse control
+            } else if (
+              isTouching &&
+              initialServerCursorPos &&
+              initialClientTouchPos
+            ) {
+              // Single-touch movement using initial positions
               const touch = event.touches[0];
               const rect = event.target.getBoundingClientRect();
-              const currentTouchPosition = {
+              const currentTouchPos = {
                 x: touch.clientX - rect.left,
                 y: touch.clientY - rect.top,
               };
 
               const deltaX =
-                (currentTouchPosition.x - lastTouchPosition.x) *
-                speedMultiplier;
+                (currentTouchPos.x - initialClientTouchPos.x) * speedMultiplier;
               const deltaY =
-                (currentTouchPosition.y - lastTouchPosition.y) *
-                speedMultiplier;
+                (currentTouchPos.y - initialClientTouchPos.y) * speedMultiplier;
 
-              try {
-                fetchCursorPosition().then((cursorPosition) => {
-                  const x = cursorPosition.x + deltaX;
-                  const y = cursorPosition.y + deltaY;
-                  const message = JSON.stringify({
-                    command: "move_cursor",
-                    args: [x, y],
-                  });
-                  socket.send(message);
-                  lastTouchPosition = currentTouchPosition;
-                });
-              } catch (error) {
-                console.error("Error moving cursor:", error);
-              }
+              const newX = initialServerCursorPos.x + deltaX;
+              const newY = initialServerCursorPos.y + deltaY;
+
+              const message = JSON.stringify({
+                command: "move_cursor",
+                args: [newX, newY],
+              });
+              socket.send(message);
+
+              // Update the visual cursor position
+              updateRemoteCursorPosition(newX, newY);
             }
           });
 
-        // Touch end event listener (for smartphones)
+        // Modified touchend listener (unchanged except for variable clearing)
         document
           .getElementById("mouseArea")
           .addEventListener("touchend", function (event) {
-            event.preventDefault(); // Prevent default touch behavior (e.g., scrolling)
+            event.preventDefault();
             if (event.touches.length < 2) {
               touch1 = null;
               touch2 = null;
             }
             if (event.touches.length === 0) {
               isTouching = false;
+              initialServerCursorPos = null;
+              initialClientTouchPos = null;
+
               const touchDuration = Date.now() - touchStartTime;
               if (touchDuration < CLICK_THRESHOLD) {
                 const message = JSON.stringify({
@@ -576,11 +595,9 @@
                   args: ["BTN_LEFT", "full"],
                 });
                 socket.send(message);
-                console.log("Click detected: Sent BTN_LEFT");
               }
             }
           });
-
         // Function to map characters to key codes
         function getKeyCode(key) {
           console.log(key);
@@ -588,13 +605,13 @@
           const keyMap = {
             Backspace: "KEY_BACKSPACE",
             Enter: "KEY_ENTER",
-            "NUMPAD_ENTER": "KEY_ENTER",
-            "Enter": "KEY_ENTER",     
-            "Go": "KEY_ENTER",        
-            "Search": "KEY_ENTER",    
-            "Done": "KEY_ENTER",      
-            "\r": "KEY_ENTER",        
-            "\n": "KEY_ENTER",        
+            NUMPAD_ENTER: "KEY_ENTER",
+            Enter: "KEY_ENTER",
+            Go: "KEY_ENTER",
+            Search: "KEY_ENTER",
+            Done: "KEY_ENTER",
+            "\r": "KEY_ENTER",
+            "\n": "KEY_ENTER",
             Shift: "KEY_LEFTSHIFT",
             Control: "KEY_LEFTCTRL",
             Alt: "KEY_LEFTALT",
@@ -661,7 +678,6 @@
             "/": "KEY_SLASH",
             "?": "KEY_SLASH",
           };
-
 
           // If the key is in the map, return the corresponding KEY_* code
           if (keyMap[key]) {
