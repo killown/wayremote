@@ -393,7 +393,8 @@ class VolumeControl:
 
 @app.route("/")
 async def index():
-    return await render_template("index.html")
+    server_ip = get_local_ip() or "127.0.0.1"  # Fallback to localhost if IP not found
+    return await render_template("index.html", server_ip=server_ip)
 
 
 SCRIPTS_DIR = os.path.join(os.path.dirname(__file__), "scripts")
@@ -860,7 +861,9 @@ async def handle_client():
 
                     try:
                         # Execute the script
-                        os.system(f"python {script_path}")
+                        subprocess.Popen(
+                            ["python", script_path]
+                        )  # Runs in background automatically
                         await websocket.send(
                             json.dumps({"message": f"Executed script: {script}"})
                         )
@@ -977,6 +980,24 @@ async def handle_client():
                         await websocket.send(
                             json.dumps({"error": f"Failed to open URL: {str(e)}"})
                         )
+                    continue
+
+                # In the WebSocket handler section of wayremote.py
+                if command == "get_config_value":
+                    try:
+                        # Load the config file
+                        config_path = os.path.expanduser("~/.config/wayremote.ini")
+                        with open(config_path, "rb") as f:
+                            config = tomllib.load(f)
+
+                        # Send back the relevant values
+                        response = {
+                            "touchpad_speed": config.get("touchpad_speed"),
+                            "scroll_speed": config.get("scroll_speed"),
+                        }
+                        await websocket.send(json.dumps(response))
+                    except Exception as e:
+                        await websocket.send(json.dumps({"error": str(e)}))
                     continue
 
                 # Handle the click_button command

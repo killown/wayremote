@@ -121,52 +121,17 @@
         </button>
       </div>
 
-      <!-- Speed control slider -->
-      <div id="speedControl">
-        <label for="speedSlider" style="color: white">Touchpad Speed:</label>
-        <input
-          type="range"
-          id="speedSlider"
-          min="0.1"
-          max="100"
-          step="0.1"
-          value="20"
-        />
-        <span id="speedValue" style="color: white">20x</span>
-      </div>
-
-      <!-- Scroll speed control slider -->
-      <div id="speedControl">
-        <label for="scrollSpeedSlider" style="color: white"
-          >Scroll Speed:</label
-        >
-        <input
-          type="range"
-          id="scrollSpeedSlider"
-          min="1"
-          max="10"
-          step="1"
-          value="3"
-        />
-        <span id="scrollSpeedValue" style="color: white">3x</span>
-      </div>
-
       <div id="output" class="mt-4"></div>
-
-      <div class="button-container">
-        <button id="commandsButton">Commands</button>
-      </div>
 
       <!-- Hidden input field to activate the keyboard -->
       <input type="text" id="hiddenInput" />
 
       <script>
-        const socket = new WebSocket("ws://192.168.1.8:5000/ws"); // Replace with your server's IP
+        const socket = new WebSocket("ws://{{ server_ip }}:5000/ws");
         const outputDiv = document.getElementById("output");
         const hiddenInput = document.getElementById("hiddenInput");
         const keyboardButton = document.getElementById("keyboardButton");
         const expoButton = document.getElementById("expoButton"); // Get the Expo button
-        const commandsButton = document.getElementById("commandsButton"); // Get the Expo button
         const fullscreenButton = document.getElementById("fullscreenButton"); // Get fullscreen button
         const closeButton = document.getElementById("closeButton"); // Get close button
         const scaleButton = document.getElementById("scaleButton"); // Get the Scale button
@@ -181,18 +146,34 @@
         const forwardButton = document.getElementById("forwardButton"); // Get the Right button
         let isTouching = false; // Track whether a touch is active
         let lastTouchPosition = null; // Track the last touch position
-        let speedMultiplier = 10; // Default speed multiplier set to 10
+        let speedMultiplier = 20; // Default value, will be updated from config
+        let scrollSpeed = 3; // Default value, will be updated from config
         let touchStartTime = 0; // Track when the touch started
         const CLICK_THRESHOLD = 200; // Time in milliseconds to distinguish between click and hold
         let upInterval = null; // Interval for UP button repeat
         let downInterval = null; // Interval for DOWN button repeat
 
-        // Add navigation to the streaming page
-        document
-          .getElementById("commandsButton")
-          .addEventListener("click", function () {
-            window.location.href = "/commands";
+        // Function to fetch config values
+        function fetchConfigValues() {
+          return new Promise((resolve) => {
+            socket.send(JSON.stringify({ command: "get_config_value" }));
+            const messageHandler = function (event) {
+              const data = JSON.parse(event.data);
+              if (
+                data.touchpad_speed !== undefined &&
+                data.scroll_speed !== undefined
+              ) {
+                // Update the slider values and display
+                speedMultiplier = parseFloat(data.touchpad_speed);
+                scrollSpeed = parseInt(data.scroll_speed);
+
+                resolve();
+                socket.removeEventListener("message", messageHandler);
+              }
+            };
+            socket.addEventListener("message", messageHandler);
           });
+        }
 
         // Expo Button Click Event
         expoButton.addEventListener("click", function () {
@@ -384,29 +365,14 @@
           hiddenInput.focus(); // Activate the keyboard
         });
 
-        // Speed control slider
-        const speedSlider = document.getElementById("speedSlider");
-        const speedValue = document.getElementById("speedValue");
-
-        speedSlider.addEventListener("input", function () {
-          speedMultiplier = parseFloat(this.value);
-          speedValue.textContent = `${speedMultiplier}x`;
-        });
-
-        // Scroll speed control slider
-        const scrollSpeedSlider = document.getElementById("scrollSpeedSlider");
-        const scrollSpeedValue = document.getElementById("scrollSpeedValue");
-        let scrollSpeed = 3; // Default scroll speed
-
-        scrollSpeedSlider.addEventListener("input", function () {
-          scrollSpeed = parseInt(this.value);
-          scrollSpeedValue.textContent = `${scrollSpeed}x`;
-        });
-
         // WebSocket event listeners
         socket.addEventListener("open", function () {
           console.log("Connected to WebSocket server");
           outputDiv.innerHTML = `<p>Connected to WebSocket server</p>`;
+          // Fetch config values after connection is established
+          fetchConfigValues()
+            .then(() => console.log("Config values loaded"))
+            .catch((error) => console.error("Error loading config:", error));
         });
 
         socket.addEventListener("message", function (event) {
@@ -447,15 +413,15 @@
           });
         }
 
-        // Function to update the visual remote cursor position
-        function updateRemoteCursorPosition(x, y) {
+        // Function to center the cursor.svg in the mouseArea (static placeholder)
+        function updateRemoteCursorPosition() {
           const mouseArea = document.getElementById("mouseArea");
           const remoteCursor = document.querySelector("#mouseArea img");
 
           if (mouseArea && remoteCursor) {
             const rect = mouseArea.getBoundingClientRect();
-            const posX = (x / screen.width) * rect.width;
-            const posY = (y / screen.height) * rect.height;
+            const posX = rect.width / 2;
+            const posY = rect.height / 2;
 
             remoteCursor.style.position = "absolute";
             remoteCursor.style.left = `${posX}px`;
@@ -463,6 +429,9 @@
             remoteCursor.style.transform = "translate(-50%, -50%)";
           }
         }
+
+        // Call once to center the cursor on load
+        updateRemoteCursorPosition();
 
         // Add these variables at the top with your other variables
         let initialServerCursorPos = null;
@@ -473,7 +442,28 @@
           .getElementById("mouseArea")
           .addEventListener("touchstart", function (event) {
             event.preventDefault();
-            if (event.touches.length === 2) {
+            // Reset three-finger detection
+            threeFingerPressDetected = false;
+
+            // Store touch positions
+            if (event.touches.length === 3) {
+              touch1 = {
+                x: event.touches[0].clientX,
+                y: event.touches[0].clientY,
+                id: event.touches[0].identifier,
+              };
+              touch2 = {
+                x: event.touches[1].clientX,
+                y: event.touches[1].clientY,
+                id: event.touches[1].identifier,
+              };
+              touch3 = {
+                x: event.touches[2].clientX,
+                y: event.touches[2].clientY,
+                id: event.touches[2].identifier,
+              };
+              threeFingerPressDetected = true;
+            } else if (event.touches.length === 2) {
               touch1 = {
                 x: event.touches[0].clientX,
                 y: event.touches[0].clientY,
@@ -507,6 +497,10 @@
           .getElementById("mouseArea")
           .addEventListener("touchmove", function (event) {
             event.preventDefault();
+            if (threeFingerPressDetected) {
+              // For 3-finger press, we don't want to move the cursor
+              return;
+            }
             if (event.touches.length === 2 && touch1 && touch2) {
               // Two-finger scroll handling (unchanged)
               const newTouch1 = {
@@ -579,6 +573,21 @@
           .getElementById("mouseArea")
           .addEventListener("touchend", function (event) {
             event.preventDefault();
+            if (threeFingerPressDetected && event.touches.length < 3) {
+              // Send middle mouse button click (or whatever you prefer)
+              const message = JSON.stringify({
+                command: "click_button",
+                args: ["BTN_RIGHT", "full"], // Or "BTN_RIGHT" for right click
+              });
+              socket.send(message);
+
+              // Reset touch tracking
+              threeFingerPressDetected = false;
+              touch1 = null;
+              touch2 = null;
+              touch3 = null;
+              return;
+            }
             if (event.touches.length < 2) {
               touch1 = null;
               touch2 = null;
