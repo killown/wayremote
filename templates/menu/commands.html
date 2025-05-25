@@ -1,0 +1,25 @@
+<!-- TITLE: Commands -->
+<!-- ICON: /static/icons/commands.svg -->
+<!-- URL: /commands -->
+<!-- POSITION: 2 -->
+<div class="col">
+  <div class="card h-100 text-center" id="commands_card">
+    <img
+      src="/static/icons/commands.svg"
+      class="card-img-top mx-auto mt-3"
+      alt="Commands"
+    />
+    <div class="card-body">
+      <h5 class="card-title">Commands</h5>
+    </div>
+  </div>
+</div>
+<script>
+  const commandsButton = document.getElementById("commands_card"); // Add navigation to the streaming page
+  // Add navigation to the streaming page
+  document
+    .getElementById("commands_card")
+    .addEventListener("click", function () {
+      window.location.href = "/commands";
+    });
+</script>
