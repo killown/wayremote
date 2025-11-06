@@ -344,7 +344,7 @@
         backButton.addEventListener("click", function () {
           const message = JSON.stringify({
             command: "press_key",
-            args: ["A-KEY_LEFT"], // Command for browser back navigation
+            args: ["KEY_BACK"], // Command for browser back navigation
           });
           socket.send(message);
           console.log("Left button clicked: Sent A-KEY_LEFT");
@@ -354,7 +354,7 @@
         forwardButton.addEventListener("click", function () {
           const message = JSON.stringify({
             command: "press_key",
-            args: ["A-KEY_RIGHT"], // Command for browser forward navigation
+            args: ["KEY_FORWARD"], // Command for browser forward navigation
           });
           socket.send(message);
           console.log("Right button clicked: Sent A-KEY_RIGHT");
